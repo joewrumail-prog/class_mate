@@ -128,12 +128,17 @@ export const useAuthStore = create<AuthState>()(
 // 监听认证状态变化
 supabase.auth.onAuthStateChange(async (event, session) => {
   console.log('Auth event:', event)
-  
-  if (event === 'SIGNED_IN' && session?.user) {
-    await useAuthStore.getState().refreshUser()
-  } else if (event === 'SIGNED_OUT') {
-    useAuthStore.getState().setUser(null)
-  } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-    await useAuthStore.getState().refreshUser()
+
+  try {
+    if (event === 'SIGNED_IN' && session?.user) {
+      await useAuthStore.getState().refreshUser()
+    } else if (event === 'SIGNED_OUT') {
+      useAuthStore.getState().setUser(null)
+    } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+      await useAuthStore.getState().refreshUser()
+    }
+  } catch (error: any) {
+    if (error?.name === 'AbortError') return
+    console.error('Auth state change error:', error)
   }
 })

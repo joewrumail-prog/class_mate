@@ -21,23 +21,8 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    const redirectIfSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session?.user) {
-          navigate('/dashboard', { replace: true })
-        }
-      } catch (error: any) {
-        if (error?.name !== 'AbortError') {
-          console.error('Session check failed:', error)
-        }
-      }
-    }
-
     if (!authLoading && user) {
       navigate(user.profile_complete === false ? '/complete-profile' : '/dashboard', { replace: true })
-    } else {
-      redirectIfSession()
     }
   }, [authLoading, navigate, user])
   
