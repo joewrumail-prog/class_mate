@@ -21,12 +21,17 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    if (!authLoading && user) {
-      if (user.profile_complete === false) {
-        navigate('/complete-profile', { replace: true })
-      } else {
+    const redirectIfSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
         navigate('/dashboard', { replace: true })
       }
+    }
+
+    if (!authLoading && user) {
+      navigate(user.profile_complete === false ? '/complete-profile' : '/dashboard', { replace: true })
+    } else {
+      redirectIfSession()
     }
   }, [authLoading, navigate, user])
   
@@ -64,13 +69,8 @@ export default function LoginPage() {
       }
       
       await refreshUser()
-      const updatedUser = useAuthStore.getState().user
       toast.success('Welcome back!')
-      if (updatedUser?.profile_complete === false) {
-        navigate('/complete-profile')
-      } else {
-        navigate('/dashboard')
-      }
+      navigate('/dashboard', { replace: true })
     } catch (error: any) {
       console.error('Login error:', error)
       if (error.message?.includes('Invalid login credentials')) {
