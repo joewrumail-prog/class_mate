@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { refreshUser } = useAuthStore()
+  const { refreshUser, user, loading: authLoading } = useAuthStore()
   
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -19,6 +19,16 @@ export default function LoginPage() {
     password: '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (user.profile_complete === false) {
+        navigate('/complete-profile', { replace: true })
+      } else {
+        navigate('/dashboard', { replace: true })
+      }
+    }
+  }, [authLoading, navigate, user])
   
   const validate = () => {
     const newErrors: Record<string, string> = {}

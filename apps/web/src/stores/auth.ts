@@ -30,7 +30,7 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
-      loading: false, // 改为 false，避免初始加载卡住
+      loading: true,
       
       setUser: (user) => set({ user, loading: false }),
       

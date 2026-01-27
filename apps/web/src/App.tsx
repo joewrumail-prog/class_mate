@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth'
 import Layout from '@/components/Layout'
@@ -16,7 +17,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthStore()
   
   // 只在真正加载时显示 loading
-  if (loading) {
+  if (loading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -45,6 +46,12 @@ function RequireProfile({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
+  const { refreshUser } = useAuthStore()
+
+  useEffect(() => {
+    refreshUser()
+  }, [refreshUser])
+
   return (
     <Routes>
       {/* Public routes */}
