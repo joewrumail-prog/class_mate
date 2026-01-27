@@ -1,0 +1,28 @@
+{
+  "name": "classmate",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Course schedule social matching platform for college students",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "dev:web": "npm run dev --workspace=@classmate/web",
+    "dev:api": "npm run dev --workspace=@classmate/api",
+    "db:generate": "npm run generate --workspace=@classmate/api",
+    "db:migrate": "npm run migrate --workspace=@classmate/api"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "npm@10.0.0"
+}
