@@ -43,6 +43,7 @@ export const useAuthStore = create<AuthState>()(
       
       refreshUser: async () => {
         try {
+          if (get().loading) return
           set({ loading: true })
           
           const { data: { session } } = await supabase.auth.getSession()
@@ -101,7 +102,11 @@ export const useAuthStore = create<AuthState>()(
               })
             }
           }
-        } catch (error) {
+        } catch (error: any) {
+          if (error?.name === 'AbortError') {
+            set({ loading: false })
+            return
+          }
           console.error('Error refreshing user:', error)
           set({ user: null, loading: false })
         }

@@ -22,9 +22,15 @@ export default function LoginPage() {
 
   useEffect(() => {
     const redirectIfSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        navigate('/dashboard', { replace: true })
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          navigate('/dashboard', { replace: true })
+        }
+      } catch (error: any) {
+        if (error?.name !== 'AbortError') {
+          console.error('Session check failed:', error)
+        }
       }
     }
 
