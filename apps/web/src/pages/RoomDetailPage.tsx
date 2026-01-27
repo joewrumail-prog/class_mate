@@ -10,6 +10,7 @@ import { PrivacyDialog } from '@/components/PrivacyDialog'
 import { ArrowLeft, Users, Calendar, MapPin, User, MessageCircle, Lock, Clock, Check, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatSemesterId } from '@/lib/semester'
+import { authFetch } from '@/lib/api'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
@@ -68,7 +69,7 @@ export default function RoomDetailPage() {
         ? `${API_URL}/api/rooms/${roomId}?userId=${user.id}`
         : `${API_URL}/api/rooms/${roomId}`
       
-      const res = await fetch(url)
+      const res = await authFetch(url)
       const data = await res.json()
       
       if (data.success) {
@@ -92,7 +93,7 @@ export default function RoomDetailPage() {
     if (user.auto_share_contact) return
     
     try {
-      const res = await fetch(`${API_URL}/api/rooms/${roomId}/privacy/${user.id}`)
+      const res = await authFetch(`${API_URL}/api/rooms/${roomId}/privacy/${user.id}`)
       const data = await res.json()
       
       if (data.success && !data.hasSet) {
@@ -118,7 +119,7 @@ export default function RoomDetailPage() {
     if (!roomId || !user?.id) return
     
     try {
-      const res = await fetch(`${API_URL}/api/rooms/${roomId}/privacy`, {
+      const res = await authFetch(`${API_URL}/api/rooms/${roomId}/privacy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, isPublic }),
@@ -142,7 +143,7 @@ export default function RoomDetailPage() {
     
     setRequestingContact(targetUserId)
     try {
-      const res = await fetch(`${API_URL}/api/contacts/request`, {
+      const res = await authFetch(`${API_URL}/api/contacts/request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -216,7 +217,7 @@ export default function RoomDetailPage() {
         <div>
           <h1 className="text-2xl font-bold">{room.courseName}</h1>
           <p className="text-muted-foreground">
-            {room.courseCode} - {formatSemesterId(room.semester)}
+            {room.courseCode ? `${room.courseCode} - ${formatSemesterId(room.semester)}` : formatSemesterId(room.semester)}
           </p>
         </div>
       </div>

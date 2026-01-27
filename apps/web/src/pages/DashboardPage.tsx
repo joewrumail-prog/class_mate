@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton'
 import { CourseSearchBox } from '@/components/CourseSearchBox'
 import { getCurrentSemester, formatSemesterId } from '@/lib/semester'
+import { authFetch } from '@/lib/api'
 import { Upload, Users, Calendar, ArrowRight } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
@@ -37,7 +38,7 @@ export default function DashboardPage() {
       if (!user?.id) return
       
       try {
-        const res = await fetch(`${API_URL}/api/rooms/my/${user.id}`)
+        const res = await authFetch(`${API_URL}/api/rooms/my/${user.id}`)
         const data = await res.json()
         if (data.success) {
           setRooms(data.rooms || [])
@@ -53,7 +54,10 @@ export default function DashboardPage() {
   }, [user?.id])
   
   const hasRooms = rooms.length > 0
-  const totalClassmates = rooms.reduce((acc, r) => acc + (r.memberCount - 1), 0) // -1 to exclude self
+  const totalClassmates = rooms.reduce(
+    (acc, r) => acc + Math.max(0, Number(r.memberCount ?? 0) - 1),
+    0
+  )
   
   return (
     <div className="space-y-6">

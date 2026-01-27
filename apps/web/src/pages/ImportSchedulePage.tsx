@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Upload, Image, Check, Edit2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getCurrentSemester, getAvailableSemesters, type SemesterInfo } from '@/lib/semester'
+import { authFetch } from '@/lib/api'
 
 interface ParsedCourse {
   name: string
@@ -83,7 +84,7 @@ export default function ImportSchedulePage() {
       const base64Image = await fileToBase64(imageFile)
       
       // Call API to parse schedule
-      const response = await fetch(`${API_URL}/api/schedule/parse`, {
+      const response = await authFetch(`${API_URL}/api/schedule/parse`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -141,7 +142,7 @@ export default function ImportSchedulePage() {
     setSaving(true)
     
     try {
-      const response = await fetch(`${API_URL}/api/schedule/confirm`, {
+      const response = await authFetch(`${API_URL}/api/schedule/confirm`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

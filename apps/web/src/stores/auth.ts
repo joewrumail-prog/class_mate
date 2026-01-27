@@ -14,6 +14,7 @@ export interface User {
   email_verified: boolean
   auto_share_contact?: boolean
   created_at: string
+  profile_complete?: boolean
 }
 
 interface AuthState {
@@ -63,21 +64,42 @@ export const useAuthStore = create<AuthState>()(
           }
           
           if (profile) {
-            set({ user: profile as User, loading: false })
+            const isComplete = Boolean(profile.nickname && profile.school)
+            set({ user: { ...(profile as User), profile_complete: isComplete }, loading: false })
           } else {
             // User exists in auth but not in users table yet
-            // Create a basic user object so they can complete registration
-            set({ 
-              user: {
+            const fallbackNickname = session.user.email?.split('@')[0] || 'User'
+            const isEdu = session.user.email?.includes('.edu') || false
+
+            const { data: createdProfile, error: createError } = await supabase
+              .from('users')
+              .insert({
                 id: session.user.id,
                 email: session.user.email || '',
-                nickname: session.user.email?.split('@')[0] || 'User',
-                is_edu_email: session.user.email?.includes('.edu') || false,
+                nickname: fallbackNickname,
+                is_edu_email: isEdu,
                 email_verified: !!session.user.email_confirmed_at,
-                created_at: session.user.created_at,
-              } as User, 
-              loading: false
-            })
+              })
+              .select('*')
+              .single()
+
+            if (!createError && createdProfile) {
+              set({ user: { ...(createdProfile as User), profile_complete: false }, loading: false })
+            } else {
+              // Create a basic user object so they can complete registration
+              set({
+                user: {
+                  id: session.user.id,
+                  email: session.user.email || '',
+                  nickname: fallbackNickname,
+                  is_edu_email: isEdu,
+                  email_verified: !!session.user.email_confirmed_at,
+                  created_at: session.user.created_at,
+                  profile_complete: false,
+                } as User,
+                loading: false,
+              })
+            }
           }
         } catch (error) {
           console.error('Error refreshing user:', error)

@@ -15,6 +15,7 @@ import {
   UserPlus
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { authFetch } from '@/lib/api'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
@@ -62,7 +63,7 @@ export default function Layout({ children }: LayoutProps) {
     
     setLoading(true)
     try {
-      const response = await fetch(`${API_URL}/api/users/${user.id}/notifications`)
+      const response = await authFetch(`${API_URL}/api/users/${user.id}/notifications`)
       const result = await response.json()
       
       if (result.success) {
@@ -80,7 +81,7 @@ export default function Layout({ children }: LayoutProps) {
     if (!user?.id) return
     
     try {
-      await fetch(`${API_URL}/api/users/${user.id}/notifications/${notificationId}/read`, {
+      await authFetch(`${API_URL}/api/users/${user.id}/notifications/${notificationId}/read`, {
         method: 'POST',
       })
       
@@ -97,7 +98,7 @@ export default function Layout({ children }: LayoutProps) {
     if (!user?.id) return
     
     try {
-      await fetch(`${API_URL}/api/users/${user.id}/notifications/read-all`, {
+      await authFetch(`${API_URL}/api/users/${user.id}/notifications/read-all`, {
         method: 'POST',
       })
       
@@ -111,7 +112,7 @@ export default function Layout({ children }: LayoutProps) {
   const handleContactResponse = async (notificationId: string, requestId: string, accept: boolean) => {
     setResponding(notificationId)
     try {
-      const response = await fetch(`${API_URL}/api/contacts/respond`, {
+      const response = await authFetch(`${API_URL}/api/contacts/respond`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

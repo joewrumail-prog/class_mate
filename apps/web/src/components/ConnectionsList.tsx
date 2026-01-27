@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Users } from 'lucide-react'
+import { authFetch } from '@/lib/api'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
@@ -31,7 +32,7 @@ export function ConnectionsList({ userId }: ConnectionsListProps) {
   useEffect(() => {
     const fetchConnections = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/contacts/connections/${userId}`)
+        const res = await authFetch(`${API_URL}/api/contacts/connections/${userId}`)
         const data = await res.json()
         if (data.success) {
           setConnections(data.connections || [])

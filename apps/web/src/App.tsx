@@ -3,7 +3,10 @@ import { useAuthStore } from '@/stores/auth'
 import Layout from '@/components/Layout'
 import HomePage from '@/pages/HomePage'
 import LoginPage from '@/pages/LoginPage'
+import ForgotPasswordPage from '@/pages/ForgotPasswordPage'
 import RegisterPage from '@/pages/RegisterPage'
+import ResetPasswordPage from '@/pages/ResetPasswordPage'
+import CompleteProfilePage from '@/pages/CompleteProfilePage'
 import DashboardPage from '@/pages/DashboardPage'
 import ImportSchedulePage from '@/pages/ImportSchedulePage'
 import RoomDetailPage from '@/pages/RoomDetailPage'
@@ -31,41 +34,66 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function RequireProfile({ children }: { children: React.ReactNode }) {
+  const { user } = useAuthStore()
+
+  if (user?.profile_complete === false) {
+    return <Navigate to="/complete-profile" replace />
+  }
+
+  return <>{children}</>
+}
+
 function App() {
   return (
     <Routes>
       {/* Public routes */}
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/register" element={<RegisterPage />} />
       
       {/* Protected routes */}
+      <Route path="/complete-profile" element={
+        <PrivateRoute>
+          <CompleteProfilePage />
+        </PrivateRoute>
+      } />
       <Route path="/dashboard" element={
         <PrivateRoute>
-          <Layout>
-            <DashboardPage />
-          </Layout>
+          <RequireProfile>
+            <Layout>
+              <DashboardPage />
+            </Layout>
+          </RequireProfile>
         </PrivateRoute>
       } />
       <Route path="/import" element={
         <PrivateRoute>
-          <Layout>
-            <ImportSchedulePage />
-          </Layout>
+          <RequireProfile>
+            <Layout>
+              <ImportSchedulePage />
+            </Layout>
+          </RequireProfile>
         </PrivateRoute>
       } />
       <Route path="/room/:roomId" element={
         <PrivateRoute>
-          <Layout>
-            <RoomDetailPage />
-          </Layout>
+          <RequireProfile>
+            <Layout>
+              <RoomDetailPage />
+            </Layout>
+          </RequireProfile>
         </PrivateRoute>
       } />
       <Route path="/profile" element={
         <PrivateRoute>
-          <Layout>
-            <ProfilePage />
-          </Layout>
+          <RequireProfile>
+            <Layout>
+              <ProfilePage />
+            </Layout>
+          </RequireProfile>
         </PrivateRoute>
       } />
       

@@ -1,13 +1,19 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { supabase } from '../lib/supabase'
+import { requireAuth } from '../middleware/auth'
 
 export const userRoutes = new Hono()
 
 // Get user profile
-userRoutes.get('/:userId', async (c) => {
+userRoutes.get('/:userId', requireAuth, async (c) => {
   try {
     const userId = c.req.param('userId')
+
+    const authUser = c.get('user') as { id: string }
+    if (authUser?.id && userId !== authUser.id) {
+      return c.json({ success: false, error: 'Forbidden' }, 403)
+    }
     
     const { data: user, error } = await supabase
       .from('users')
@@ -36,11 +42,16 @@ const updateSchema = z.object({
   avatar_url: z.string().url().optional().nullable(),
 })
 
-userRoutes.patch('/:userId', async (c) => {
+userRoutes.patch('/:userId', requireAuth, async (c) => {
   try {
     const userId = c.req.param('userId')
     const body = await c.req.json()
     const updates = updateSchema.parse(body)
+
+    const authUser = c.get('user') as { id: string }
+    if (authUser?.id && userId !== authUser.id) {
+      return c.json({ success: false, error: 'Forbidden' }, 403)
+    }
     
     const { data: user, error } = await supabase
       .from('users')
@@ -59,10 +70,15 @@ userRoutes.patch('/:userId', async (c) => {
 })
 
 // Get user notifications
-userRoutes.get('/:userId/notifications', async (c) => {
+userRoutes.get('/:userId/notifications', requireAuth, async (c) => {
   try {
     const userId = c.req.param('userId')
     const unreadOnly = c.req.query('unread') === 'true'
+
+    const authUser = c.get('user') as { id: string }
+    if (authUser?.id && userId !== authUser.id) {
+      return c.json({ success: false, error: 'Forbidden' }, 403)
+    }
     
     let query = supabase
       .from('notifications')
@@ -87,11 +103,16 @@ userRoutes.get('/:userId/notifications', async (c) => {
 })
 
 // Mark notifications as read
-userRoutes.post('/:userId/notifications/read', async (c) => {
+userRoutes.post('/:userId/notifications/read', requireAuth, async (c) => {
   try {
     const userId = c.req.param('userId')
     const body = await c.req.json()
     const { ids } = body as { ids?: string[] }
+
+    const authUser = c.get('user') as { id: string }
+    if (authUser?.id && userId !== authUser.id) {
+      return c.json({ success: false, error: 'Forbidden' }, 403)
+    }
     
     let query = supabase
       .from('notifications')
@@ -114,10 +135,15 @@ userRoutes.post('/:userId/notifications/read', async (c) => {
 })
 
 // Mark single notification as read
-userRoutes.post('/:userId/notifications/:notificationId/read', async (c) => {
+userRoutes.post('/:userId/notifications/:notificationId/read', requireAuth, async (c) => {
   try {
     const userId = c.req.param('userId')
     const notificationId = c.req.param('notificationId')
+
+    const authUser = c.get('user') as { id: string }
+    if (authUser?.id && userId !== authUser.id) {
+      return c.json({ success: false, error: 'Forbidden' }, 403)
+    }
     
     const { error } = await supabase
       .from('notifications')
@@ -135,9 +161,14 @@ userRoutes.post('/:userId/notifications/:notificationId/read', async (c) => {
 })
 
 // Mark all notifications as read
-userRoutes.post('/:userId/notifications/read-all', async (c) => {
+userRoutes.post('/:userId/notifications/read-all', requireAuth, async (c) => {
   try {
     const userId = c.req.param('userId')
+
+    const authUser = c.get('user') as { id: string }
+    if (authUser?.id && userId !== authUser.id) {
+      return c.json({ success: false, error: 'Forbidden' }, 403)
+    }
     
     const { error } = await supabase
       .from('notifications')

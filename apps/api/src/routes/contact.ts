@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { supabase } from '../lib/supabase'
+import { requireAuth } from '../middleware/auth'
 
 export const contactRoutes = new Hono()
 
@@ -14,10 +15,15 @@ const requestSchema = z.object({
   message: z.string().max(200).optional(),
 })
 
-contactRoutes.post('/request', async (c) => {
+contactRoutes.post('/request', requireAuth, async (c) => {
   try {
     const body = await c.req.json()
     const { requesterId, targetId, roomId, message } = requestSchema.parse(body)
+
+    const authUser = c.get('user') as { id: string }
+    if (authUser?.id && requesterId !== authUser.id) {
+      return c.json({ success: false, error: 'Forbidden' }, 403)
+    }
     
     // 不能向自己发送请求
     if (requesterId === targetId) {
@@ -120,10 +126,15 @@ const respondSchema = z.object({
   accept: z.boolean(),  // true = approve, false = reject
 })
 
-contactRoutes.post('/respond', async (c) => {
+contactRoutes.post('/respond', requireAuth, async (c) => {
   try {
     const body = await c.req.json()
     const { requestId, userId, accept } = respondSchema.parse(body)
+
+    const authUser = c.get('user') as { id: string }
+    if (authUser?.id && userId !== authUser.id) {
+      return c.json({ success: false, error: 'Forbidden' }, 403)
+    }
     
     // 获取请求
     const { data: request, error: fetchError } = await supabase
@@ -203,9 +214,14 @@ contactRoutes.post('/respond', async (c) => {
 /**
  * 获取我的好友列表（互相可见联系方式的用户）
  */
-contactRoutes.get('/connections/:userId', async (c) => {
+contactRoutes.get('/connections/:userId', requireAuth, async (c) => {
   try {
     const userId = c.req.param('userId')
+
+    const authUser = c.get('user') as { id: string }
+    if (authUser?.id && userId !== authUser.id) {
+      return c.json({ success: false, error: 'Forbidden' }, 403)
+    }
     
     // 获取所有连接（用户可能是 user_id_1 或 user_id_2）
     const { data: connections, error } = await supabase
@@ -270,9 +286,14 @@ contactRoutes.get('/connections/:userId', async (c) => {
 /**
  * 获取待处理的请求（我收到的）
  */
-contactRoutes.get('/pending/:userId', async (c) => {
+contactRoutes.get('/pending/:userId', requireAuth, async (c) => {
   try {
     const userId = c.req.param('userId')
+
+    const authUser = c.get('user') as { id: string }
+    if (authUser?.id && userId !== authUser.id) {
+      return c.json({ success: false, error: 'Forbidden' }, 403)
+    }
     
     const { data: requests, error } = await supabase
       .from('contact_requests')
@@ -331,10 +352,15 @@ contactRoutes.get('/pending/:userId', async (c) => {
 /**
  * 检查与某用户的连接状态
  */
-contactRoutes.get('/status/:userId/:targetId', async (c) => {
+contactRoutes.get('/status/:userId/:targetId', requireAuth, async (c) => {
   try {
     const userId = c.req.param('userId')
     const targetId = c.req.param('targetId')
+
+    const authUser = c.get('user') as { id: string }
+    if (authUser?.id && userId !== authUser.id) {
+      return c.json({ success: false, error: 'Forbidden' }, 403)
+    }
     
     // 检查是否已连接
     const { data: isConnected } = await supabase.rpc('are_connected', {

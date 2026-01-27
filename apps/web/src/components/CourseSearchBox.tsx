@@ -3,6 +3,9 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useNavigate } from 'react-router-dom'
 import { parseSemesterId } from '@/lib/semester'
+import { authFetch } from '@/lib/api'
+import { useAuthStore } from '@/stores/auth'
+import { toast } from 'sonner'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
@@ -24,18 +27,24 @@ interface CourseSearchBoxProps {
 
 export function CourseSearchBox({ semester }: CourseSearchBoxProps) {
   const navigate = useNavigate()
+  const { user } = useAuthStore()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const [syncNeeded, setSyncNeeded] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [joiningIndex, setJoiningIndex] = useState<string | null>(null)
 
   // Check if data exists
   useEffect(() => {
     const checkData = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/rutgers/sync-status`)
+        const parsed = parseSemesterId(semester)
+        const url = parsed
+          ? `${API_URL}/api/rutgers/sync-status?year=${parsed.year}&term=${parsed.term}`
+          : `${API_URL}/api/rutgers/sync-status`
+        const res = await fetch(url)
         const data = await res.json()
         if (data.success && data.needsSync) {
           setSyncNeeded(true)
@@ -45,7 +54,7 @@ export function CourseSearchBox({ semester }: CourseSearchBoxProps) {
       }
     }
     checkData()
-  }, [])
+  }, [semester])
 
   const handleSync = async () => {
     setSyncing(true)
@@ -53,7 +62,7 @@ export function CourseSearchBox({ semester }: CourseSearchBoxProps) {
       const parsed = parseSemesterId(semester)
       if (!parsed) return
 
-      const res = await fetch(`${API_URL}/api/rutgers/sync`, {
+      const res = await authFetch(`${API_URL}/api/rutgers/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -106,15 +115,47 @@ export function CourseSearchBox({ semester }: CourseSearchBoxProps) {
     return () => clearTimeout(timer)
   }, [query, search])
 
-  const handleSelect = (result: SearchResult) => {
+  const handleSelect = async (result: SearchResult) => {
+    if (!user?.id) {
+      navigate('/login')
+      return
+    }
+
     if (result.roomId) {
       navigate(`/room/${result.roomId}`)
-    } else {
-      // For now, just log - in future could create room or show details
-      console.log('Selected course:', result)
+      return
     }
-    setShowResults(false)
-    setQuery('')
+
+    const parsed = parseSemesterId(semester)
+    if (!parsed) return
+
+    setJoiningIndex(result.index)
+    try {
+      const res = await authFetch(`${API_URL}/api/rooms/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          index: result.index,
+          year: parsed.year,
+          term: parsed.term,
+        }),
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error)
+
+      if (data.roomId) {
+        toast.success('Joined course room')
+        navigate(`/room/${data.roomId}`)
+      } else {
+        toast.error('No room created for this course')
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to join course')
+    } finally {
+      setJoiningIndex(null)
+      setShowResults(false)
+      setQuery('')
+    }
   }
 
   return (
@@ -193,6 +234,9 @@ export function CourseSearchBox({ semester }: CourseSearchBoxProps) {
                       <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded font-mono">
                         {result.index}
                       </span>
+                      {joiningIndex === result.index && (
+                        <p className="text-xs text-muted-foreground mt-1">Joining...</p>
+                      )}
                       {result.userCount > 0 && (
                         <p className="text-xs text-green-600 mt-1">
                           {result.userCount} in ClassMate

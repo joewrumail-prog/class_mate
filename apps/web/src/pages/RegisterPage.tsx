@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
@@ -60,6 +60,63 @@ export default function RegisterPage() {
     return Object.keys(newErrors).length === 0
   }
   
+  const pendingProfileKey = 'classmate-pending-profile'
+
+  const saveProfile = async (
+    userId: string,
+    email: string,
+    profile: { nickname: string; wechat?: string; qq?: string; isEdu: boolean; emailVerified: boolean }
+  ) => {
+    const { error } = await supabase
+      .from('users')
+      .upsert({
+        id: userId,
+        email,
+        nickname: profile.nickname,
+        wechat: profile.wechat || null,
+        qq: profile.qq || null,
+        school: 'Rutgers University - New Brunswick',
+        is_edu_email: profile.isEdu,
+        email_verified: profile.emailVerified,
+        auto_share_contact: false,
+      })
+
+    if (error) throw error
+  }
+
+  useEffect(() => {
+    const checkPendingProfile = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      const pendingRaw = localStorage.getItem(pendingProfileKey)
+      if (!session?.user || !pendingRaw) return
+
+      try {
+        const pending = JSON.parse(pendingRaw) as {
+          nickname: string
+          wechat?: string
+          qq?: string
+          email?: string
+          isEdu: boolean
+        }
+
+        if (!pending.nickname) return
+
+        await saveProfile(session.user.id, session.user.email || pending.email || '', {
+          ...pending,
+          emailVerified: !!session.user.email_confirmed_at,
+        })
+        localStorage.removeItem(pendingProfileKey)
+        await refreshUser()
+        toast.success('Registration complete!')
+        navigate('/dashboard')
+      } catch (error: any) {
+        console.error('Failed to save pending profile:', error)
+      }
+    }
+
+    checkPendingProfile()
+  }, [navigate, refreshUser])
+
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validateEmail()) return
@@ -70,7 +127,7 @@ export default function RegisterPage() {
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: `${window.location.origin}/complete-profile`,
         },
       })
       
@@ -78,7 +135,12 @@ export default function RegisterPage() {
       
       console.log('SignUp response:', data)
       toast.success('Verification email sent! Please check your inbox.')
-      setStep('profile')
+      if (data.session) {
+        setStep('profile')
+      } else {
+        localStorage.setItem(pendingProfileKey, JSON.stringify({ email: formData.email, isEdu }))
+        setStep('verify')
+      }
     } catch (error: any) {
       console.error('Register error:', error)
       if (error.message?.includes('aborted') || error.name === 'AbortError') {
@@ -99,28 +161,28 @@ export default function RegisterPage() {
     try {
       // Get current user session
       const { data: { session } } = await supabase.auth.getSession()
-      
+
       if (!session?.user) {
-        // If no session, they need to verify email first
-        toast.info('Please verify your email first')
+        // Save profile locally and prompt verification
+        localStorage.setItem(pendingProfileKey, JSON.stringify({
+          nickname: formData.nickname,
+          wechat: formData.wechat,
+          qq: formData.qq,
+          email: formData.email,
+          isEdu,
+        }))
+        toast.info('Please verify your email first. We will save your profile once you return.')
         navigate('/login')
         return
       }
-      
-      // Create user profile - school is fixed to Rutgers NB
-      const { error } = await supabase.from('users').insert({
-        id: session.user.id,
-        email: formData.email,
+
+      await saveProfile(session.user.id, session.user.email || formData.email, {
         nickname: formData.nickname,
-        wechat: formData.wechat || null,
-        qq: formData.qq || null,
-        school: 'Rutgers University - New Brunswick',
-        is_edu_email: isEdu,
-        email_verified: session.user.email_confirmed_at ? true : false,
-        auto_share_contact: false,
+        wechat: formData.wechat,
+        qq: formData.qq,
+        isEdu,
+        emailVerified: !!session.user.email_confirmed_at,
       })
-      
-      if (error) throw error
       
       await refreshUser()
       toast.success('Registration complete!')
@@ -142,7 +204,7 @@ export default function RegisterPage() {
           </Link>
           <CardTitle>Create Account</CardTitle>
           <CardDescription>
-            {step === 'email' ? 'Enter your email to get started' : 'Complete your profile'}
+            {step === 'email' ? 'Enter your email to get started' : step === 'verify' ? 'Verify your email' : 'Complete your profile'}
           </CardDescription>
         </CardHeader>
         
@@ -194,6 +256,15 @@ export default function RegisterPage() {
                 Send Verification Email
               </Button>
             </form>
+          ) : step === 'verify' ? (
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
+                We sent a verification link to <strong>{formData.email || 'your email'}</strong>. Please click it to activate your account.
+              </div>
+              <Button className="w-full" onClick={() => navigate('/login')}>
+                I have verified, go to Login
+              </Button>
+            </div>
           ) : (
             <form onSubmit={handleProfileSubmit} className="space-y-4">
               <div className="p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground mb-4">

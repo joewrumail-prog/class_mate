@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { ConnectionsList } from '@/components/ConnectionsList'
+import { ContactRequestsList } from '@/components/ContactRequestsList'
 import { toast } from 'sonner'
 
 export default function ProfilePage() {
@@ -209,6 +210,7 @@ export default function ProfilePage() {
       </Card>
       
       {/* Connections List */}
+      {user?.id && <ContactRequestsList userId={user.id} />}
       {user?.id && <ConnectionsList userId={user.id} />}
       
       {/* Quota Info */}

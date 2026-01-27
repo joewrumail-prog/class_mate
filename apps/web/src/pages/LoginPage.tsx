@@ -54,8 +54,13 @@ export default function LoginPage() {
       }
       
       await refreshUser()
+      const updatedUser = useAuthStore.getState().user
       toast.success('Welcome back!')
-      navigate('/dashboard')
+      if (updatedUser?.profile_complete === false) {
+        navigate('/complete-profile')
+      } else {
+        navigate('/dashboard')
+      }
     } catch (error: any) {
       console.error('Login error:', error)
       if (error.message?.includes('Invalid login credentials')) {

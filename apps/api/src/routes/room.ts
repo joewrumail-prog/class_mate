@@ -1,12 +1,74 @@
 import { Hono } from 'hono'
+import { z } from 'zod'
 import { supabase } from '../lib/supabase'
+import { getUserFromRequest, requireAuth } from '../middleware/auth'
 
 export const roomRoutes = new Hono()
 
+const uuidSchema = z.string().uuid()
+const joinByIndexSchema = z.object({
+  index: z.string().min(1),
+  year: z.number().int(),
+  term: z.number().int(),
+})
+
+const getSemesterId = (year: number, term: number) =>
+  `${year}-${term === 1 ? 'spring' : term === 7 ? 'fall' : term === 9 ? 'summer' : 'winter'}`
+
+const getDayOfWeek = (meetingDay: string | null) => {
+  if (!meetingDay) return 1
+  const normalized = meetingDay.toUpperCase()
+  if (normalized.includes('M')) return 1
+  if (normalized.includes('T')) return 2
+  if (normalized.includes('W')) return 3
+  if (normalized.includes('H')) return 4
+  if (normalized.includes('F')) return 5
+  if (normalized.includes('S')) return 6
+  return 7
+}
+
+const formatTime = (value: string | null) => {
+  if (!value || value.length < 4) return null
+  return `${value.slice(0, 2)}:${value.slice(2, 4)}`
+}
+
+const ensureUserProfile = async (user: { id: string; email?: string; email_confirmed_at?: string }) => {
+  const { data: existingUser, error } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', user.id)
+    .single()
+
+  if (error && error.code !== 'PGRST116') throw error
+  if (existingUser) return
+
+  const email = user.email || ''
+  const nickname = email ? email.split('@')[0] : 'User'
+  const isEdu = email.includes('.edu')
+
+  const { error: createError } = await supabase
+    .from('users')
+    .insert({
+      id: user.id,
+      email,
+      nickname,
+      is_edu_email: isEdu,
+      email_verified: !!user.email_confirmed_at,
+      school: 'Rutgers University - New Brunswick',
+    })
+
+  if (createError) throw createError
+}
+
 // Get user's rooms
-roomRoutes.get('/my/:userId', async (c) => {
+roomRoutes.get('/my/:userId', requireAuth, async (c) => {
   try {
     const userId = c.req.param('userId')
+
+    const authUser = c.get('user') as { id: string }
+    if (authUser?.id && userId !== authUser.id) {
+      return c.json({ success: false, error: 'Forbidden' }, 403)
+    }
     
     const { data: memberships, error } = await supabase
       .from('room_members')
@@ -57,12 +119,138 @@ roomRoutes.get('/my/:userId', async (c) => {
   }
 })
 
+// Join or create a room from Rutgers section index
+roomRoutes.post('/join', requireAuth, async (c) => {
+  try {
+    const body = await c.req.json()
+    const { index, year, term } = joinByIndexSchema.parse(body)
+
+    const authUser = c.get('user') as { id: string }
+    if (!authUser?.id) {
+      return c.json({ success: false, error: 'Unauthorized' }, 401)
+    }
+
+    await ensureUserProfile(authUser)
+
+    const { data: section, error: sectionError } = await supabase
+      .from('rutgers_courses')
+      .select('*')
+      .eq('index', index)
+      .eq('year', year)
+      .eq('term', term)
+      .single()
+
+    if (sectionError || !section) {
+      return c.json({ success: false, error: 'Section not found' }, 404)
+    }
+
+    const courseName = section.title || 'Untitled Course'
+    const courseCode = section.course_string || null
+    const school = 'Rutgers University - New Brunswick'
+    const dayOfWeek = getDayOfWeek(section.meeting_day)
+    const startTime = formatTime(section.start_time)
+    const endTime = formatTime(section.end_time)
+    const professor = section.instructor || ''
+    const classroom = [section.building, section.room_number].filter(Boolean).join(' ').trim()
+    const weeks = ''
+    const semesterId = getSemesterId(year, term)
+
+    if (!startTime || !endTime) {
+      return c.json({ success: false, error: 'Section time is missing' }, 400)
+    }
+
+    let { data: existingCourse } = await supabase
+      .from('courses')
+      .select('id')
+      .eq('name', courseName)
+      .eq('school', school)
+      .single()
+
+    if (!existingCourse) {
+      const { data: newCourse, error } = await supabase
+        .from('courses')
+        .insert({ name: courseName, school, code: courseCode })
+        .select('id')
+        .single()
+
+      if (error) throw error
+      existingCourse = newCourse
+    }
+
+    let { data: existingRoom } = await supabase
+      .from('course_rooms')
+      .select('id')
+      .eq('course_id', existingCourse.id)
+      .eq('semester_id', semesterId)
+      .eq('day_of_week', dayOfWeek)
+      .eq('start_time', startTime)
+      .eq('end_time', endTime)
+      .eq('professor', professor)
+      .eq('classroom', classroom)
+      .eq('weeks', weeks)
+      .single()
+
+    if (!existingRoom) {
+      const { data: newRoom, error } = await supabase
+        .from('course_rooms')
+        .insert({
+          course_id: existingCourse.id,
+          semester_id: semesterId,
+          day_of_week: dayOfWeek,
+          start_time: startTime,
+          end_time: endTime,
+          professor,
+          classroom,
+          weeks,
+          member_count: 0,
+        })
+        .select('id')
+        .single()
+
+      if (error) throw error
+      existingRoom = newRoom
+    }
+
+    const { data: existingMember, error: existingMemberError } = await supabase
+      .from('room_members')
+      .select('id')
+      .eq('room_id', existingRoom.id)
+      .eq('user_id', authUser.id)
+      .single()
+
+    if (existingMemberError && existingMemberError.code !== 'PGRST116') {
+      throw existingMemberError
+    }
+
+    if (!existingMember) {
+      const { error: insertMemberError } = await supabase
+        .from('room_members')
+        .insert({ room_id: existingRoom.id, user_id: authUser.id })
+
+      if (insertMemberError) throw insertMemberError
+    }
+
+    return c.json({
+      success: true,
+      roomId: existingRoom.id,
+    })
+  } catch (error: any) {
+    console.error('Join room error:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
 // Get room details with members
 // Query param: ?userId=xxx (current user, for determining contact visibility)
 roomRoutes.get('/:roomId', async (c) => {
   try {
     const roomId = c.req.param('roomId')
-    const currentUserId = c.req.query('userId')
+    const parsedRoomId = uuidSchema.safeParse(roomId)
+    if (!parsedRoomId.success) {
+      return c.json({ success: false, error: 'Invalid roomId' }, 400)
+    }
+    const authUser = await getUserFromRequest(c)
+    const currentUserId = authUser?.id
     
     // Get room info
     const { data: room, error: roomError } = await supabase
@@ -230,10 +418,19 @@ roomRoutes.get('/:roomId', async (c) => {
 })
 
 // Set room privacy setting for current user
-roomRoutes.post('/:roomId/privacy', async (c) => {
+roomRoutes.post('/:roomId/privacy', requireAuth, async (c) => {
   try {
     const roomId = c.req.param('roomId')
+    const parsedRoomId = uuidSchema.safeParse(roomId)
+    if (!parsedRoomId.success) {
+      return c.json({ success: false, error: 'Invalid roomId' }, 400)
+    }
     const { userId, isPublic } = await c.req.json()
+
+    const authUser = c.get('user') as { id: string }
+    if (authUser?.id && userId !== authUser.id) {
+      return c.json({ success: false, error: 'Forbidden' }, 403)
+    }
     
     if (!userId) {
       return c.json({ success: false, error: 'userId is required' }, 400)
@@ -260,10 +457,19 @@ roomRoutes.post('/:roomId/privacy', async (c) => {
 })
 
 // Check if user has set privacy for this room
-roomRoutes.get('/:roomId/privacy/:userId', async (c) => {
+roomRoutes.get('/:roomId/privacy/:userId', requireAuth, async (c) => {
   try {
     const roomId = c.req.param('roomId')
+    const parsedRoomId = uuidSchema.safeParse(roomId)
+    if (!parsedRoomId.success) {
+      return c.json({ success: false, error: 'Invalid roomId' }, 400)
+    }
     const userId = c.req.param('userId')
+
+    const authUser = c.get('user') as { id: string }
+    if (authUser?.id && userId !== authUser.id) {
+      return c.json({ success: false, error: 'Forbidden' }, 403)
+    }
     
     const { data, error } = await supabase
       .from('room_privacy_settings')

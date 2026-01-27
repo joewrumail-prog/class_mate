@@ -1,7 +1,8 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { supabase } from '../lib/supabase'
-import { parseScheduleImage, ParsedCourse } from '../lib/openai'
+import { parseScheduleImage } from '../lib/scheduleParser'
+import { requireAuth } from '../middleware/auth'
 
 export const scheduleRoutes = new Hono()
 
@@ -11,7 +12,7 @@ const parseSchema = z.object({
   semester: z.string().optional().default('2025-spring'),
 })
 
-scheduleRoutes.post('/parse', async (c) => {
+scheduleRoutes.post('/parse', requireAuth, async (c) => {
   try {
     const body = await c.req.json()
     const { image, semester } = parseSchema.parse(body)
@@ -56,10 +57,44 @@ const confirmSchema = z.object({
   })),
 })
 
-scheduleRoutes.post('/confirm', async (c) => {
+scheduleRoutes.post('/confirm', requireAuth, async (c) => {
   try {
     const body = await c.req.json()
     const { userId, semester, school, courses } = confirmSchema.parse(body)
+
+    const authUser = c.get('user') as { id: string; email?: string; email_confirmed_at?: string }
+    if (authUser?.id && userId !== authUser.id) {
+      return c.json({ success: false, error: 'Forbidden' }, 403)
+    }
+
+    const { data: existingUser, error: existingUserError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .single()
+
+    if (existingUserError && existingUserError.code !== 'PGRST116') {
+      throw existingUserError
+    }
+
+    if (!existingUser) {
+      const email = authUser?.email || ''
+      const nickname = email ? email.split('@')[0] : 'User'
+      const isEdu = email.includes('.edu')
+
+      const { error: createUserError } = await supabase
+        .from('users')
+        .insert({
+          id: userId,
+          email,
+          nickname,
+          is_edu_email: isEdu,
+          email_verified: !!authUser?.email_confirmed_at,
+          school,
+        })
+
+      if (createUserError) throw createUserError
+    }
     
     const results = {
       created: 0,
@@ -97,6 +132,8 @@ scheduleRoutes.post('/confirm', async (c) => {
         .eq('start_time', course.startTime)
         .eq('professor', course.professor)
         .eq('classroom', course.classroom)
+        .eq('end_time', course.endTime)
+        .eq('weeks', course.weeks || '')
         .single()
       
       if (!existingRoom) {
@@ -110,7 +147,7 @@ scheduleRoutes.post('/confirm', async (c) => {
             end_time: course.endTime,
             professor: course.professor,
             classroom: course.classroom,
-            weeks: course.weeks,
+            weeks: course.weeks || '',
             member_count: 0,
           })
           .select('id, member_count')
@@ -122,23 +159,23 @@ scheduleRoutes.post('/confirm', async (c) => {
       }
       
       // 3. Add user to room (if not already a member)
-      const { data: existingMember } = await supabase
+      const { data: existingMember, error: existingMemberError } = await supabase
         .from('room_members')
         .select('id')
         .eq('room_id', existingRoom.id)
         .eq('user_id', userId)
         .single()
+
+      if (existingMemberError && existingMemberError.code !== 'PGRST116') {
+        throw existingMemberError
+      }
       
       if (!existingMember) {
-        await supabase
+        const { error: insertMemberError } = await supabase
           .from('room_members')
           .insert({ room_id: existingRoom.id, user_id: userId })
-        
-        // Update member count
-        await supabase
-          .from('course_rooms')
-          .update({ member_count: existingRoom.member_count + 1 })
-          .eq('id', existingRoom.id)
+
+        if (insertMemberError) throw insertMemberError
         
         results.joined++
         
