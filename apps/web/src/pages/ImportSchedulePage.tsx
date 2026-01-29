@@ -217,30 +217,29 @@ export default function ImportSchedulePage() {
 
   
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="min-h-screen bg-[#F8FAFC] py-10">
+      <div className="max-w-5xl mx-auto px-4 md:px-6 space-y-8">
       <div className="space-y-3">
         <h1 className="text-2xl font-semibold text-[#1F2937]">Import Schedule</h1>
         <p className="text-sm text-[#6B7280]">Upload a schedule screenshot or PDF for AI to extract course info.</p>
-        <div className="flex items-center gap-3 text-xs font-medium">
-          <div className={`flex items-center gap-2 ${step === 'upload' ? 'text-[#1E40AF]' : 'text-[#6B7280]'}`}>
-            <span className={`h-6 w-6 rounded-full flex items-center justify-center border ${step === 'upload' ? 'border-[#1E40AF] bg-[#EFF6FF]' : 'border-[#E2E8F0] bg-white'}`}>1</span>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-medium">
+          <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${step === 'upload' ? 'border-[#1E40AF] bg-[#EFF6FF] text-[#1E40AF]' : 'border-[#E2E8F0] bg-white text-[#6B7280]'}`}>
+            <span className="h-6 w-6 rounded-full flex items-center justify-center border border-current bg-white">1</span>
             Upload & Parse
           </div>
-          <div className="h-px w-8 bg-[#E2E8F0]" />
-          <div className={`flex items-center gap-2 ${step === 'confirm' ? 'text-[#1E40AF]' : 'text-[#6B7280]'}`}>
-            <span className={`h-6 w-6 rounded-full flex items-center justify-center border ${step === 'confirm' ? 'border-[#1E40AF] bg-[#EFF6FF]' : 'border-[#E2E8F0] bg-white'}`}>2</span>
+          <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${step === 'confirm' ? 'border-[#1E40AF] bg-[#EFF6FF] text-[#1E40AF]' : 'border-[#E2E8F0] bg-white text-[#6B7280]'}`}>
+            <span className="h-6 w-6 rounded-full flex items-center justify-center border border-current bg-white">2</span>
             Verify Courses
           </div>
-          <div className="h-px w-8 bg-[#E2E8F0]" />
-          <div className={`flex items-center gap-2 ${step === 'confirm' && saving ? 'text-[#1E40AF]' : 'text-[#6B7280]'}`}>
-            <span className={`h-6 w-6 rounded-full flex items-center justify-center border ${step === 'confirm' && saving ? 'border-[#1E40AF] bg-[#EFF6FF]' : 'border-[#E2E8F0] bg-white'}`}>3</span>
+          <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${step === 'confirm' && saving ? 'border-[#1E40AF] bg-[#EFF6FF] text-[#1E40AF]' : 'border-[#E2E8F0] bg-white text-[#6B7280]'}`}>
+            <span className="h-6 w-6 rounded-full flex items-center justify-center border border-current bg-white">3</span>
             Done
           </div>
         </div>
       </div>
 
       <Card className="border-0 shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-2px_rgba(0,0,0,0.05)] rounded-2xl overflow-hidden">
-        <CardContent className="p-6 md:p-8 space-y-6 bg-[radial-gradient(circle_at_top,#EFF6FF_0%,#FFFFFF_42%)]">
+        <CardContent className="p-6 md:p-8 space-y-6 bg-[radial-gradient(circle_at_top,#EFF6FF_0%,#FFFFFF_45%)]">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="space-y-1">
               <h2 className="text-lg font-medium text-[#1F2937]">Semester</h2>
@@ -462,6 +461,7 @@ export default function ImportSchedulePage() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }
