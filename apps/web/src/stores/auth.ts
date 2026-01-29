@@ -42,73 +42,74 @@ export const useAuthStore = create<AuthState>()(
       },
       
       refreshUser: async () => {
+        if (get().loading) return
+        set({ loading: true })
+
         try {
-          if (get().loading) return
-          set({ loading: true })
-          
           const { data: { session } } = await supabase.auth.getSession()
-          
+
           if (!session?.user) {
-            set({ user: null, loading: false })
+            set({ user: null })
             return
           }
-          
+
           // Fetch user profile from our users table
           const { data: profile, error } = await supabase
             .from('users')
             .select('*')
             .eq('id', session.user.id)
             .single()
-          
+
           if (error && error.code !== 'PGRST116') {
             console.error('Profile fetch error:', error)
           }
-          
+
           if (profile) {
             const isComplete = Boolean(profile.nickname && profile.school)
-            set({ user: { ...(profile as User), profile_complete: isComplete }, loading: false })
-          } else {
-            // User exists in auth but not in users table yet
-            const fallbackNickname = session.user.email?.split('@')[0] || 'User'
-            const isEdu = session.user.email?.includes('.edu') || false
-
-            const { data: createdProfile, error: createError } = await supabase
-              .from('users')
-              .insert({
-                id: session.user.id,
-                email: session.user.email || '',
-                nickname: fallbackNickname,
-                is_edu_email: isEdu,
-                email_verified: !!session.user.email_confirmed_at,
-              })
-              .select('*')
-              .single()
-
-            if (!createError && createdProfile) {
-              set({ user: { ...(createdProfile as User), profile_complete: false }, loading: false })
-            } else {
-              // Create a basic user object so they can complete registration
-              set({
-                user: {
-                  id: session.user.id,
-                  email: session.user.email || '',
-                  nickname: fallbackNickname,
-                  is_edu_email: isEdu,
-                  email_verified: !!session.user.email_confirmed_at,
-                  created_at: session.user.created_at,
-                  profile_complete: false,
-                } as User,
-                loading: false,
-              })
-            }
-          }
-        } catch (error: any) {
-          if (error?.name === 'AbortError') {
-            set({ loading: false })
+            set({ user: { ...(profile as User), profile_complete: isComplete } })
             return
           }
-          console.error('Error refreshing user:', error)
-          set({ user: null, loading: false })
+
+          // User exists in auth but not in users table yet
+          const fallbackNickname = session.user.email?.split('@')[0] || 'User'
+          const isEdu = session.user.email?.includes('.edu') || false
+
+          const { data: createdProfile, error: createError } = await supabase
+            .from('users')
+            .insert({
+              id: session.user.id,
+              email: session.user.email || '',
+              nickname: fallbackNickname,
+              is_edu_email: isEdu,
+              email_verified: !!session.user.email_confirmed_at,
+            })
+            .select('*')
+            .single()
+
+          if (!createError && createdProfile) {
+            set({ user: { ...(createdProfile as User), profile_complete: false } })
+            return
+          }
+
+          // Create a basic user object so they can complete registration
+          set({
+            user: {
+              id: session.user.id,
+              email: session.user.email || '',
+              nickname: fallbackNickname,
+              is_edu_email: isEdu,
+              email_verified: !!session.user.email_confirmed_at,
+              created_at: session.user.created_at,
+              profile_complete: false,
+            } as User,
+          })
+        } catch (error: any) {
+          if (error?.name !== 'AbortError') {
+            console.error('Error refreshing user:', error)
+            set({ user: null })
+          }
+        } finally {
+          set({ loading: false })
         }
       },
     }),
