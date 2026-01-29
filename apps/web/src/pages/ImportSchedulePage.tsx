@@ -239,8 +239,8 @@ export default function ImportSchedulePage() {
         </div>
       </div>
 
-      <Card className="border-0 shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-2px_rgba(0,0,0,0.05)] rounded-2xl">
-        <CardContent className="p-6 md:p-8 space-y-6">
+      <Card className="border-0 shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-2px_rgba(0,0,0,0.05)] rounded-2xl overflow-hidden">
+        <CardContent className="p-6 md:p-8 space-y-6 bg-[radial-gradient(circle_at_top,#EFF6FF_0%,#FFFFFF_42%)]">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="space-y-1">
               <h2 className="text-lg font-medium text-[#1F2937]">Semester</h2>
@@ -249,7 +249,7 @@ export default function ImportSchedulePage() {
             <div className="flex items-center gap-3">
               <Label className="text-sm text-[#6B7280]">Semester:</Label>
               <select
-                className="h-12 rounded-md border border-[#E2E8F0] bg-white px-4 text-sm text-[#1F2937] focus:outline-none focus:ring-2 focus:ring-[#1E40AF]/20"
+                className="h-12 rounded-md border border-[#E2E8F0] bg-white px-4 text-sm text-[#1F2937] transition-all focus:outline-none focus:ring-2 focus:ring-[#1E40AF]/20 focus:border-[#1E40AF]/60"
                 value={semester}
                 onChange={(e) => setSemester(e.target.value)}
               >
@@ -267,10 +267,10 @@ export default function ImportSchedulePage() {
             <div className="space-y-4">
               <div
                 {...getRootProps()}
-                className={`rounded-xl border-2 border-dashed p-8 text-center transition-colors cursor-pointer ${
+                className={`rounded-xl border-2 border-dashed p-8 text-center transition-all cursor-pointer ${
                   isDragActive
                     ? 'border-[#1E40AF] bg-[#EFF6FF]'
-                    : 'border-[#1E40AF]/40 bg-[#EFF6FF] hover:border-[#1E40AF]'
+                    : 'border-[#1E40AF]/40 bg-[#EFF6FF] hover:border-[#1E40AF] hover:shadow-sm'
                 }`}
               >
                 <input {...getInputProps()} />
@@ -279,7 +279,7 @@ export default function ImportSchedulePage() {
                     <img
                       src={imagePreview}
                       alt="Schedule preview"
-                      className="max-h-64 mx-auto rounded-lg shadow-md"
+                      className="max-h-64 mx-auto rounded-lg shadow-md transition-transform duration-300 hover:scale-[1.01]"
                     />
                     <p className="text-sm text-[#6B7280]">Click or drag to replace file</p>
                   </div>
@@ -296,7 +296,7 @@ export default function ImportSchedulePage() {
                       <p className="text-base font-medium text-[#1F2937]">Drag & drop your schedule here</p>
                       <p className="text-sm text-[#6B7280]">AI will extract course details. Supports PNG, JPG, PDF.</p>
                     </div>
-                    <Button variant="outline" className="border-[#1E40AF] text-[#1E40AF] bg-white">
+                    <Button variant="outline" className="border-[#1E40AF] text-[#1E40AF] bg-white hover:bg-[#EFF6FF]">
                       Or Browse Files
                     </Button>
                   </div>
@@ -304,7 +304,7 @@ export default function ImportSchedulePage() {
               </div>
 
               {imageFile && (
-                <Button className="w-full bg-[#1E40AF] text-white hover:bg-[#1E40AF]/90" onClick={handleParse}>
+                <Button className="w-full bg-[#1E40AF] text-white hover:bg-[#1E40AF]/90 shadow-sm" onClick={handleParse}>
                   Start Recognition
                 </Button>
               )}
@@ -333,7 +333,7 @@ export default function ImportSchedulePage() {
 
               <div className="space-y-3">
                 {parsedCourses.map((course, index) => (
-                  <div key={index} className="rounded-xl border border-[#E2E8F0] bg-white p-4">
+                  <div key={index} className="rounded-xl border border-[#E2E8F0] bg-white p-4 transition-all hover:shadow-md hover:-translate-y-0.5">
                     {editingIndex === index ? (
                       <div className="space-y-3">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -348,7 +348,7 @@ export default function ImportSchedulePage() {
                           <div>
                             <Label>Day</Label>
                             <select
-                              className="w-full h-12 rounded-md border border-[#E2E8F0] bg-white px-3 text-sm"
+                              className="w-full h-12 rounded-md border border-[#E2E8F0] bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E40AF]/20 focus:border-[#1E40AF]/60"
                               value={course.day}
                               onChange={(e) => handleUpdateCourse(index, 'day', parseInt(e.target.value))}
                             >
@@ -381,37 +381,37 @@ export default function ImportSchedulePage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div>
                             <Label>Classroom</Label>
-                            <Input
-                              className="h-12"
-                              value={course.classroom}
-                              onChange={(e) => handleUpdateCourse(index, 'classroom', e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <Label>Professor</Label>
-                            <Input
-                              className="h-12"
-                              value={course.professor}
-                              onChange={(e) => handleUpdateCourse(index, 'professor', e.target.value)}
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <Label>Weeks</Label>
                           <Input
                             className="h-12"
-                            value={course.weeks}
-                            placeholder="e.g. 1-16"
-                            onChange={(e) => handleUpdateCourse(index, 'weeks', e.target.value)}
+                            value={course.classroom}
+                            onChange={(e) => handleUpdateCourse(index, 'classroom', e.target.value)}
                           />
                         </div>
+                        <div>
+                          <Label>Professor</Label>
+                          <Input
+                            className="h-12"
+                            value={course.professor}
+                            onChange={(e) => handleUpdateCourse(index, 'professor', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                        <div>
+                          <Label>Weeks</Label>
+                        <Input
+                          className="h-12"
+                          value={course.weeks}
+                          placeholder="e.g. 1-16"
+                          onChange={(e) => handleUpdateCourse(index, 'weeks', e.target.value)}
+                        />
+                      </div>
                         <div className="flex gap-2">
-                          <Button size="sm" onClick={() => setEditingIndex(null)}>
-                            <Check className="h-4 w-4 mr-1" />
-                            Done
-                          </Button>
-                          <Button size="sm" variant="destructive" onClick={() => handleRemoveCourse(index)}>
-                            Remove
+                        <Button size="sm" onClick={() => setEditingIndex(null)}>
+                          <Check className="h-4 w-4 mr-1" />
+                          Done
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleRemoveCourse(index)}>
+                          Remove
                           </Button>
                         </div>
                       </div>
