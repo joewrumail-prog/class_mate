@@ -217,243 +217,251 @@ export default function ImportSchedulePage() {
 
   
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Import Schedule</h1>
-        <p className="text-muted-foreground">Upload a schedule screenshot for AI to extract course info</p>
-      </div>
-
-      {/* Semester Selector */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
-            <Label>Semester:</Label>
-            <select
-              className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-              value={semester}
-              onChange={(e) => setSemester(e.target.value)}
-            >
-              {availableSemesters.map((sem) => (
-                <option key={sem.id} value={sem.id}>
-                  {sem.display}
-                </option>
-              ))}
-            </select>
-            <span className="text-sm text-muted-foreground">
-              Rutgers New Brunswick
-            </span>
+    <div className="max-w-4xl mx-auto space-y-8">
+      <div className="space-y-3">
+        <h1 className="text-2xl font-semibold text-[#1F2937]">Import Schedule</h1>
+        <p className="text-sm text-[#6B7280]">Upload a schedule screenshot or PDF for AI to extract course info.</p>
+        <div className="flex items-center gap-3 text-xs font-medium">
+          <div className={`flex items-center gap-2 ${step === 'upload' ? 'text-[#1E40AF]' : 'text-[#6B7280]'}`}>
+            <span className={`h-6 w-6 rounded-full flex items-center justify-center border ${step === 'upload' ? 'border-[#1E40AF] bg-[#EFF6FF]' : 'border-[#E2E8F0] bg-white'}`}>1</span>
+            Upload & Parse
           </div>
-        </CardContent>
-      </Card>
-      
-      {/* Step 1: Upload */}
-      {step === 'upload' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Upload Schedule</CardTitle>
-            <CardDescription>
-              Supports PNG, JPG, JPEG, WebP, and PDF formats (first page), max 15MB
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div
-              {...getRootProps()}
-              className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-                isDragActive 
-                  ? 'border-primary bg-primary/5' 
-                  : 'border-muted-foreground/25 hover:border-primary/50'
-              }`}
-            >
-              <input {...getInputProps()} />
-              
-              {imagePreview ? (
-                <div className="space-y-4">
-                  <img 
-                    src={imagePreview} 
-                    alt="Schedule preview" 
-                    className="max-h-64 mx-auto rounded-lg shadow-md"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Click or drag to replace image
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto">
-                    {isDragActive ? (
-                      <Image className="h-8 w-8 text-primary" />
-                    ) : (
-                      <Upload className="h-8 w-8 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-medium">
-                      {isDragActive ? 'Drop to upload' : 'Drag image here'}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      or click to select file
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            {imageFile && (
-              <Button className="w-full" onClick={handleParse}>
-                Start Recognition
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
-      
-      {/* Step 2: Parsing */}
-      {step === 'parsing' && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-            <h3 className="font-semibold mb-2">AI is analyzing your schedule...</h3>
-            <p className="text-sm text-muted-foreground">
-              This may take a few seconds
-            </p>
-          </CardContent>
-        </Card>
-      )}
-      
-      {/* Step 3: Confirm */}
-      {step === 'confirm' && (
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Confirm Course Information</CardTitle>
-              <CardDescription>
-                Review the results and click edit to fix any errors
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {parsedCourses.map((course, index) => (
-                <div 
-                  key={index} 
-                  className="border rounded-lg p-4 space-y-3"
-                >
-                  {editingIndex === index ? (
-                    // Editing mode
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label>Course Name</Label>
-                          <Input
-                            value={course.name}
-                            onChange={(e) => handleUpdateCourse(index, 'name', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label>Day</Label>
-                          <select 
-                            className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-                            value={course.day}
-                            onChange={(e) => handleUpdateCourse(index, 'day', parseInt(e.target.value))}
-                          >
-                            {[1, 2, 3, 4, 5, 6, 7].map(d => (
-                              <option key={d} value={d}>{dayNames[d]}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label>Start Time</Label>
-                          <Input
-                            type="time"
-                            value={course.startTime}
-                            onChange={(e) => handleUpdateCourse(index, 'startTime', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label>End Time</Label>
-                          <Input
-                            type="time"
-                            value={course.endTime}
-                            onChange={(e) => handleUpdateCourse(index, 'endTime', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label>Classroom</Label>
-                          <Input
-                            value={course.classroom}
-                            onChange={(e) => handleUpdateCourse(index, 'classroom', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label>Professor</Label>
-                          <Input
-                            value={course.professor}
-                            onChange={(e) => handleUpdateCourse(index, 'professor', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <Label>Weeks</Label>
-                        <Input
-                          value={course.weeks}
-                          placeholder="e.g. 1-16"
-                          onChange={(e) => handleUpdateCourse(index, 'weeks', e.target.value)}
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={() => setEditingIndex(null)}>
-                          <Check className="h-4 w-4 mr-1" />
-                          Done
-                        </Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleRemoveCourse(index)}>
-                          Remove
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    // Display mode
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <h4 className="font-semibold text-lg">{course.name}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {dayNames[course.day]} {course.startTime} - {course.endTime}
-                        </p>
-                        {(course.classroom || course.professor) && (
-                          <p className="text-sm text-muted-foreground">
-                            {course.classroom && `Room: ${course.classroom}`}
-                            {course.classroom && course.professor && ' | '}
-                            {course.professor && `Prof: ${course.professor}`}
-                          </p>
-                        )}
-                        {course.weeks && (
-                          <p className="text-sm text-muted-foreground">
-                            Weeks: {course.weeks}
-                          </p>
-                        )}
-                      </div>
-                      <Button size="sm" variant="ghost" onClick={() => setEditingIndex(index)}>
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-          
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setStep('upload')} className="flex-1">
-              Re-upload
-            </Button>
-            <Button onClick={handleConfirm} disabled={saving} className="flex-1">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Confirm Import ({parsedCourses.length} courses)
-            </Button>
+          <div className="h-px w-8 bg-[#E2E8F0]" />
+          <div className={`flex items-center gap-2 ${step === 'confirm' ? 'text-[#1E40AF]' : 'text-[#6B7280]'}`}>
+            <span className={`h-6 w-6 rounded-full flex items-center justify-center border ${step === 'confirm' ? 'border-[#1E40AF] bg-[#EFF6FF]' : 'border-[#E2E8F0] bg-white'}`}>2</span>
+            Verify Courses
+          </div>
+          <div className="h-px w-8 bg-[#E2E8F0]" />
+          <div className={`flex items-center gap-2 ${step === 'confirm' && saving ? 'text-[#1E40AF]' : 'text-[#6B7280]'}`}>
+            <span className={`h-6 w-6 rounded-full flex items-center justify-center border ${step === 'confirm' && saving ? 'border-[#1E40AF] bg-[#EFF6FF]' : 'border-[#E2E8F0] bg-white'}`}>3</span>
+            Done
           </div>
         </div>
-      )}
+      </div>
+
+      <Card className="border-0 shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-2px_rgba(0,0,0,0.05)] rounded-2xl">
+        <CardContent className="p-6 md:p-8 space-y-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1">
+              <h2 className="text-lg font-medium text-[#1F2937]">Semester</h2>
+              <p className="text-sm text-[#6B7280]">Select the term you want to match.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Label className="text-sm text-[#6B7280]">Semester:</Label>
+              <select
+                className="h-12 rounded-md border border-[#E2E8F0] bg-white px-4 text-sm text-[#1F2937] focus:outline-none focus:ring-2 focus:ring-[#1E40AF]/20"
+                value={semester}
+                onChange={(e) => setSemester(e.target.value)}
+              >
+                {availableSemesters.map((sem) => (
+                  <option key={sem.id} value={sem.id}>
+                    {sem.display}
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs text-[#6B7280]">Rutgers New Brunswick</span>
+            </div>
+          </div>
+
+          {step === 'upload' && (
+            <div className="space-y-4">
+              <div
+                {...getRootProps()}
+                className={`rounded-xl border-2 border-dashed p-8 text-center transition-colors cursor-pointer ${
+                  isDragActive
+                    ? 'border-[#1E40AF] bg-[#EFF6FF]'
+                    : 'border-[#1E40AF]/40 bg-[#EFF6FF] hover:border-[#1E40AF]'
+                }`}
+              >
+                <input {...getInputProps()} />
+                {imagePreview ? (
+                  <div className="space-y-4">
+                    <img
+                      src={imagePreview}
+                      alt="Schedule preview"
+                      className="max-h-64 mx-auto rounded-lg shadow-md"
+                    />
+                    <p className="text-sm text-[#6B7280]">Click or drag to replace file</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mx-auto shadow-sm">
+                      {isDragActive ? (
+                        <Image className="h-8 w-8 text-[#1E40AF]" />
+                      ) : (
+                        <Upload className="h-8 w-8 text-[#1E40AF]" />
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-base font-medium text-[#1F2937]">Drag & drop your schedule here</p>
+                      <p className="text-sm text-[#6B7280]">AI will extract course details. Supports PNG, JPG, PDF.</p>
+                    </div>
+                    <Button variant="outline" className="border-[#1E40AF] text-[#1E40AF] bg-white">
+                      Or Browse Files
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {imageFile && (
+                <Button className="w-full bg-[#1E40AF] text-white hover:bg-[#1E40AF]/90" onClick={handleParse}>
+                  Start Recognition
+                </Button>
+              )}
+            </div>
+          )}
+
+          {step === 'parsing' && (
+            <div className="py-10 text-center space-y-3">
+              <Loader2 className="h-10 w-10 animate-spin text-[#1E40AF] mx-auto" />
+              <h3 className="text-base font-medium text-[#1F2937]">Analyzing your document...</h3>
+              <p className="text-sm text-[#6B7280]">This usually takes a few seconds.</p>
+            </div>
+          )}
+
+          {step === 'confirm' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-medium text-[#1F2937]">Found {parsedCourses.length} Courses</h2>
+                  <p className="text-sm text-[#6B7280]">Verify the details before importing.</p>
+                </div>
+                <Button variant="outline" onClick={() => setStep('upload')}>
+                  ← Upload different file
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {parsedCourses.map((course, index) => (
+                  <div key={index} className="rounded-xl border border-[#E2E8F0] bg-white p-4">
+                    {editingIndex === index ? (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <Label>Course Name</Label>
+                            <Input
+                              className="h-12"
+                              value={course.name}
+                              onChange={(e) => handleUpdateCourse(index, 'name', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label>Day</Label>
+                            <select
+                              className="w-full h-12 rounded-md border border-[#E2E8F0] bg-white px-3 text-sm"
+                              value={course.day}
+                              onChange={(e) => handleUpdateCourse(index, 'day', parseInt(e.target.value))}
+                            >
+                              {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+                                <option key={d} value={d}>{dayNames[d]}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <Label>Start Time</Label>
+                            <Input
+                              type="time"
+                              className="h-12"
+                              value={course.startTime}
+                              onChange={(e) => handleUpdateCourse(index, 'startTime', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label>End Time</Label>
+                            <Input
+                              type="time"
+                              className="h-12"
+                              value={course.endTime}
+                              onChange={(e) => handleUpdateCourse(index, 'endTime', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <Label>Classroom</Label>
+                            <Input
+                              className="h-12"
+                              value={course.classroom}
+                              onChange={(e) => handleUpdateCourse(index, 'classroom', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label>Professor</Label>
+                            <Input
+                              className="h-12"
+                              value={course.professor}
+                              onChange={(e) => handleUpdateCourse(index, 'professor', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label>Weeks</Label>
+                          <Input
+                            className="h-12"
+                            value={course.weeks}
+                            placeholder="e.g. 1-16"
+                            onChange={(e) => handleUpdateCourse(index, 'weeks', e.target.value)}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => setEditingIndex(null)}>
+                            <Check className="h-4 w-4 mr-1" />
+                            Done
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleRemoveCourse(index)}>
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full bg-[#0D9488]" />
+                            <span className="text-sm font-medium text-[#1E40AF]">{course.name}</span>
+                          </div>
+                          <p className="text-sm text-[#6B7280]">
+                            {dayNames[course.day]} {course.startTime} - {course.endTime}
+                          </p>
+                          {(course.classroom || course.professor) && (
+                            <p className="text-xs text-[#6B7280]">
+                              {course.classroom && `Room: ${course.classroom}`}
+                              {course.classroom && course.professor && ' · '}
+                              {course.professor && `Prof: ${course.professor}`}
+                            </p>
+                          )}
+                          {course.weeks && (
+                            <p className="text-xs text-[#6B7280]">Weeks: {course.weeks}</p>
+                          )}
+                        </div>
+                        <Button size="sm" variant="ghost" onClick={() => setEditingIndex(index)}>
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <Button variant="outline" onClick={() => setStep('upload')}>
+                  ← Upload different file
+                </Button>
+                <Button
+                  onClick={handleConfirm}
+                  disabled={saving}
+                  className="bg-[#1E40AF] text-white hover:bg-[#1E40AF]/90"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Confirm & Import {parsedCourses.length} Courses
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
