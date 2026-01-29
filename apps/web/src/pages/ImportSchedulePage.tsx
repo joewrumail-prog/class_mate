@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Upload, Image, Check, Edit2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { getCurrentSemester, getAvailableSemesters, type SemesterInfo } from '@/lib/semester'
+import { getCurrentSemester, getAvailableSemesters, type SemesterInfo, parseSemesterId } from '@/lib/semester'
 import { authFetch } from '@/lib/api'
+import * as pdfjsLib from 'pdfjs-dist'
 
 interface ParsedCourse {
   name: string
@@ -31,29 +32,51 @@ export default function ImportSchedulePage() {
   const [step, setStep] = useState<'upload' | 'parsing' | 'confirm'>('upload')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [sourceDataUrl, setSourceDataUrl] = useState<string | null>(null)
   const [parsedCourses, setParsedCourses] = useState<ParsedCourse[]>([])
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
+  const [indexInput, setIndexInput] = useState('')
+  const [joiningByIndex, setJoiningByIndex] = useState(false)
   
   // Auto-detect current semester
   const availableSemesters = getAvailableSemesters()
   const [semester, setSemester] = useState(getCurrentSemester().id)
   
-  const onDrop = useCallback((acceptedFiles: File[]) => {
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0]
     if (!file) return
-    
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file')
+
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+    const isImage = file.type.startsWith('image/')
+
+    if (!isPdf && !isImage) {
+      toast.error('Please upload an image or PDF file')
       return
     }
-    
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('Image must be under 10MB')
+
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('File must be under 15MB')
       return
     }
-    
+
     setImageFile(file)
+    setSourceDataUrl(null)
+
+    if (isPdf) {
+      try {
+        const dataUrl = await pdfToDataUrl(file)
+        setImagePreview(dataUrl)
+        setSourceDataUrl(dataUrl)
+      } catch (error: any) {
+        console.error('PDF render error:', error)
+        toast.error('Failed to read PDF. Please try another file.')
+        setImageFile(null)
+        setImagePreview(null)
+      }
+      return
+    }
+
     setImagePreview(URL.createObjectURL(file))
   }, [])
   
@@ -61,6 +84,7 @@ export default function ImportSchedulePage() {
     onDrop,
     accept: {
       'image/*': ['.png', '.jpg', '.jpeg', '.webp'],
+      'application/pdf': ['.pdf'],
     },
     maxFiles: 1,
   })
@@ -73,6 +97,29 @@ export default function ImportSchedulePage() {
       reader.onerror = error => reject(error)
     })
   }
+
+  const pdfToDataUrl = async (file: File): Promise<string> => {
+    const arrayBuffer = await file.arrayBuffer()
+    const workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+    pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc
+
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer })
+    const pdf = await loadingTask.promise
+    const page = await pdf.getPage(1)
+    const viewport = page.getViewport({ scale: 2 })
+    const canvas = document.createElement('canvas')
+    const context = canvas.getContext('2d')
+
+    canvas.width = viewport.width
+    canvas.height = viewport.height
+
+    if (!context) {
+      throw new Error('Canvas not supported')
+    }
+
+    await page.render({ canvasContext: context, viewport }).promise
+    return canvas.toDataURL('image/png')
+  }
   
   const handleParse = async () => {
     if (!imageFile) return
@@ -80,8 +127,7 @@ export default function ImportSchedulePage() {
     setStep('parsing')
     
     try {
-      // Convert image to base64
-      const base64Image = await fileToBase64(imageFile)
+      const base64Image = sourceDataUrl || await fileToBase64(imageFile)
       
       // Call API to parse schedule
       const response = await authFetch(`${API_URL}/api/schedule/parse`, {
@@ -170,6 +216,58 @@ export default function ImportSchedulePage() {
       setSaving(false)
     }
   }
+
+  const handleIndexJoin = async () => {
+    if (!user?.id) {
+      toast.error('Please login first')
+      return
+    }
+
+    const parsed = parseSemesterId(semester)
+    if (!parsed) {
+      toast.error('Invalid semester')
+      return
+    }
+
+    const indices = indexInput
+      .split(/[\s,\n]+/)
+      .map((value) => value.trim())
+      .filter(Boolean)
+
+    if (indices.length === 0) {
+      toast.error('Please enter at least one index number')
+      return
+    }
+
+    setJoiningByIndex(true)
+    let successCount = 0
+
+    try {
+      for (const index of indices) {
+        const res = await authFetch(`${API_URL}/api/rooms/join`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            index,
+            year: parsed.year,
+            term: parsed.term,
+          }),
+        })
+        const data = await res.json()
+        if (!data.success) {
+          throw new Error(data.error || `Failed to join ${index}`)
+        }
+        successCount += 1
+      }
+
+      toast.success(`Added ${successCount} course${successCount > 1 ? 's' : ''}`)
+      navigate('/dashboard')
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to add courses')
+    } finally {
+      setJoiningByIndex(false)
+    }
+  }
   
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -205,9 +303,9 @@ export default function ImportSchedulePage() {
       {step === 'upload' && (
         <Card>
           <CardHeader>
-            <CardTitle>Upload Schedule Screenshot</CardTitle>
+            <CardTitle>Upload Schedule</CardTitle>
             <CardDescription>
-              Supports PNG, JPG, JPEG, WebP formats, max 10MB
+              Supports PNG, JPG, JPEG, WebP, and PDF formats (first page), max 15MB
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -258,6 +356,27 @@ export default function ImportSchedulePage() {
                 Start Recognition
               </Button>
             )}
+
+            <div className="border-t pt-4">
+              <h3 className="font-medium mb-2">Add courses by Rutgers index</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                Paste index numbers separated by commas, spaces, or new lines.
+              </p>
+              <textarea
+                className="w-full min-h-[96px] rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                placeholder="Example: 11396, 10364\n14567"
+                value={indexInput}
+                onChange={(e) => setIndexInput(e.target.value)}
+              />
+              <Button
+                className="w-full mt-3"
+                onClick={handleIndexJoin}
+                disabled={joiningByIndex}
+              >
+                {joiningByIndex ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Add Courses
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
