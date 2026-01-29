@@ -17,6 +17,8 @@ export interface User {
   profile_complete?: boolean
 }
 
+let refreshing = false
+
 interface AuthState {
   user: User | null
   loading: boolean
@@ -42,7 +44,8 @@ export const useAuthStore = create<AuthState>()(
       },
       
       refreshUser: async () => {
-        if (get().loading) return
+        if (refreshing) return
+        refreshing = true
         set({ loading: true })
 
         try {
@@ -109,6 +112,7 @@ export const useAuthStore = create<AuthState>()(
             set({ user: null })
           }
         } finally {
+          refreshing = false
           set({ loading: false })
         }
       },
