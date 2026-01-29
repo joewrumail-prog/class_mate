@@ -35,7 +35,11 @@ export default function DashboardPage() {
   
   useEffect(() => {
     const fetchRooms = async () => {
-      if (!user?.id) return
+      if (!user?.id) {
+        setRooms([])
+        setLoading(false)
+        return
+      }
       
       try {
         const res = await authFetch(`${API_URL}/api/rooms/my/${user.id}`)
