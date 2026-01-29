@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Upload, Image, Check, Edit2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { getCurrentSemester, getAvailableSemesters, type SemesterInfo, parseSemesterId } from '@/lib/semester'
+import { getCurrentSemester, getAvailableSemesters, type SemesterInfo } from '@/lib/semester'
 import { authFetch } from '@/lib/api'
 import * as pdfjsLib from 'pdfjs-dist'
+import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url'
 
 interface ParsedCourse {
   name: string
@@ -36,8 +37,6 @@ export default function ImportSchedulePage() {
   const [parsedCourses, setParsedCourses] = useState<ParsedCourse[]>([])
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
-  const [indexInput, setIndexInput] = useState('')
-  const [joiningByIndex, setJoiningByIndex] = useState(false)
   
   // Auto-detect current semester
   const availableSemesters = getAvailableSemesters()
@@ -100,7 +99,6 @@ export default function ImportSchedulePage() {
 
   const pdfToDataUrl = async (file: File): Promise<string> => {
     const arrayBuffer = await file.arrayBuffer()
-    const workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
     pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc
 
     const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer })
@@ -217,57 +215,6 @@ export default function ImportSchedulePage() {
     }
   }
 
-  const handleIndexJoin = async () => {
-    if (!user?.id) {
-      toast.error('Please login first')
-      return
-    }
-
-    const parsed = parseSemesterId(semester)
-    if (!parsed) {
-      toast.error('Invalid semester')
-      return
-    }
-
-    const indices = indexInput
-      .split(/[\s,\n]+/)
-      .map((value) => value.trim())
-      .filter(Boolean)
-
-    if (indices.length === 0) {
-      toast.error('Please enter at least one index number')
-      return
-    }
-
-    setJoiningByIndex(true)
-    let successCount = 0
-
-    try {
-      for (const index of indices) {
-        const res = await authFetch(`${API_URL}/api/rooms/join`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            index,
-            year: parsed.year,
-            term: parsed.term,
-          }),
-        })
-        const data = await res.json()
-        if (!data.success) {
-          throw new Error(data.error || `Failed to join ${index}`)
-        }
-        successCount += 1
-      }
-
-      toast.success(`Added ${successCount} course${successCount > 1 ? 's' : ''}`)
-      navigate('/dashboard')
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to add courses')
-    } finally {
-      setJoiningByIndex(false)
-    }
-  }
   
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -356,27 +303,6 @@ export default function ImportSchedulePage() {
                 Start Recognition
               </Button>
             )}
-
-            <div className="border-t pt-4">
-              <h3 className="font-medium mb-2">Add courses by Rutgers index</h3>
-              <p className="text-sm text-muted-foreground mb-3">
-                Paste index numbers separated by commas, spaces, or new lines.
-              </p>
-              <textarea
-                className="w-full min-h-[96px] rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-                placeholder="Example: 11396, 10364\n14567"
-                value={indexInput}
-                onChange={(e) => setIndexInput(e.target.value)}
-              />
-              <Button
-                className="w-full mt-3"
-                onClick={handleIndexJoin}
-                disabled={joiningByIndex}
-              >
-                {joiningByIndex ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Add Courses
-              </Button>
-            </div>
           </CardContent>
         </Card>
       )}
