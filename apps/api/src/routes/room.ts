@@ -98,20 +98,25 @@ roomRoutes.get('/my/:userId', requireAuth, async (c) => {
     
     if (error) throw error
     
-    const rooms = memberships?.map(m => ({
-      id: m.course_rooms.id,
-      courseName: m.course_rooms.courses.name,
-      courseCode: m.course_rooms.courses.code,
-      dayOfWeek: m.course_rooms.day_of_week,
-      startTime: m.course_rooms.start_time,
-      endTime: m.course_rooms.end_time,
-      professor: m.course_rooms.professor,
-      classroom: m.course_rooms.classroom,
-      weeks: m.course_rooms.weeks,
-      memberCount: m.course_rooms.member_count,
-      semester: m.course_rooms.semester_id,
-      joinedAt: m.joined_at,
-    })) || []
+    const rooms = memberships?.map(m => {
+      const courseRoom = Array.isArray(m.course_rooms) ? m.course_rooms[0] : m.course_rooms
+      const course = Array.isArray(courseRoom?.courses) ? courseRoom?.courses?.[0] : courseRoom?.courses
+
+      return {
+        id: courseRoom?.id,
+        courseName: course?.name,
+        courseCode: course?.code,
+        dayOfWeek: courseRoom?.day_of_week,
+        startTime: courseRoom?.start_time,
+        endTime: courseRoom?.end_time,
+        professor: courseRoom?.professor,
+        classroom: courseRoom?.classroom,
+        weeks: courseRoom?.weeks,
+        memberCount: courseRoom?.member_count,
+        semester: courseRoom?.semester_id,
+        joinedAt: m.joined_at,
+      }
+    }).filter(r => r.id) || []
     
     return c.json({ success: true, rooms })
   } catch (error: any) {
@@ -356,10 +361,11 @@ roomRoutes.get('/:roomId', async (c) => {
     
     // Determine contact visibility for each member
     const membersWithVisibility = members?.map(m => {
-      const userId = m.users.id
+      const user = Array.isArray(m.users) ? m.users[0] : m.users
+      const userId = user.id
       const isCurrentUser = userId === currentUserId
       const isConnected = connectionSet.has(userId)
-      const hasAutoShare = m.users.auto_share_contact === true
+      const hasAutoShare = user.auto_share_contact === true
       const roomPrivacy = privacyMap.get(userId)
       const isPublicInRoom = roomPrivacy === true
       const requestStatus = requestStatusMap.get(userId)
@@ -383,10 +389,10 @@ roomRoutes.get('/:roomId', async (c) => {
       
       return {
         id: userId,
-        nickname: m.users.nickname,
-        avatar: m.users.avatar_url,
-        wechat: canSeeContact ? m.users.wechat : null,
-        qq: canSeeContact ? m.users.qq : null,
+        nickname: user.nickname,
+        avatar: user.avatar_url,
+        wechat: canSeeContact ? user.wechat : null,
+        qq: canSeeContact ? user.qq : null,
         joinedAt: m.joined_at,
         contactStatus,
         isConnected,
@@ -397,9 +403,9 @@ roomRoutes.get('/:roomId', async (c) => {
       success: true,
       room: {
         id: room.id,
-        courseName: room.courses.name,
-        courseCode: room.courses.code,
-        school: room.courses.school,
+        courseName: Array.isArray(room.courses) ? room.courses?.[0]?.name : room.courses.name,
+        courseCode: Array.isArray(room.courses) ? room.courses?.[0]?.code : room.courses.code,
+        school: Array.isArray(room.courses) ? room.courses?.[0]?.school : room.courses.school,
         dayOfWeek: room.day_of_week,
         startTime: room.start_time,
         endTime: room.end_time,

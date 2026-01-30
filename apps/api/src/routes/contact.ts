@@ -86,12 +86,13 @@ contactRoutes.post('/request', requireAccess, async (c) => {
     // 获取房间信息（如果有）
     let roomName = ''
     if (roomId) {
-      const { data: room } = await supabase
-        .from('course_rooms')
-        .select('courses(name)')
-        .eq('id', roomId)
-        .single()
-      roomName = room?.courses?.name || ''
+        const { data: room } = await supabase
+          .from('course_rooms')
+          .select('courses(name)')
+          .eq('id', roomId)
+          .single()
+        const courseName = Array.isArray(room?.courses) ? room?.courses?.[0]?.name : room?.courses?.name
+        roomName = courseName || ''
     }
     
     // 发送站内通知给目标用户
@@ -262,7 +263,12 @@ contactRoutes.get('/connections/:userId', requireAccess, async (c) => {
           .in('id', roomIds)
       : { data: [] }
     
-    const roomMap = new Map(rooms?.map(r => [r.id, r.courses?.name]) || [])
+    const roomMap = new Map(
+      rooms?.map(r => {
+        const courseName = Array.isArray(r.courses) ? r.courses?.[0]?.name : r.courses?.name
+        return [r.id, courseName]
+      }) || []
+    )
     
     // 组合结果
     const result = connections?.map(conn => {
@@ -332,7 +338,12 @@ contactRoutes.get('/pending/:userId', requireAccess, async (c) => {
           .in('id', roomIds)
       : { data: [] }
     
-    const roomMap = new Map(rooms?.map(r => [r.id, r.courses?.name]) || [])
+    const roomMap = new Map(
+      rooms?.map(r => {
+        const courseName = Array.isArray(r.courses) ? r.courses?.[0]?.name : r.courses?.name
+        return [r.id, courseName]
+      }) || []
+    )
     
     // 组合结果
     const result = requests?.map(req => ({
