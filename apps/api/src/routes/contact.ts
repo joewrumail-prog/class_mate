@@ -2,8 +2,9 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { supabase } from '../lib/supabase'
 import { requireAccess } from '../middleware/auth'
+import type { AppVariables } from '../types'
 
-export const contactRoutes = new Hono()
+export const contactRoutes = new Hono<{ Variables: AppVariables }>()
 
 /**
  * 发送联系方式请求

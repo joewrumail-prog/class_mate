@@ -6,8 +6,9 @@ import { requireAccess } from '../middleware/auth'
 import { rateLimit } from '../middleware/rateLimit'
 import { recordLlmCall } from '../lib/metrics'
 import { consumeQuota } from '../lib/quota'
+import type { AppVariables } from '../types'
 
-export const scheduleRoutes = new Hono()
+export const scheduleRoutes = new Hono<{ Variables: AppVariables }>()
 
 // Parse schedule image
 const parseSchema = z.object({

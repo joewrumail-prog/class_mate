@@ -2,8 +2,9 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { supabase } from '../lib/supabase'
 import { requireAuth } from '../middleware/auth'
+import type { AppVariables } from '../types'
 
-export const userRoutes = new Hono()
+export const userRoutes = new Hono<{ Variables: AppVariables }>()
 
 // Get user profile
 userRoutes.get('/:userId', requireAuth, async (c) => {

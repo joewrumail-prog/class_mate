@@ -1,8 +1,9 @@
 import type { Context, Next } from 'hono'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import type { AppVariables } from '../types'
 
-export async function getUserFromRequest(c: Context): Promise<User | null> {
+export async function getUserFromRequest(c: Context<{ Variables: AppVariables }>): Promise<User | null> {
   const authHeader = c.req.header('Authorization') || ''
   if (!authHeader.startsWith('Bearer ')) return null
 
@@ -15,7 +16,7 @@ export async function getUserFromRequest(c: Context): Promise<User | null> {
   return data.user
 }
 
-export async function requireAuth(c: Context, next: Next) {
+export async function requireAuth(c: Context<{ Variables: AppVariables }>, next: Next) {
   const user = await getUserFromRequest(c)
   if (!user) {
     return c.json({ success: false, error: 'Unauthorized' }, 401)
@@ -33,7 +34,7 @@ const isEduEmail = (email?: string | null) => {
   return lower.endsWith('.edu') || lower.endsWith('@rutgers.edu')
 }
 
-export async function requireAccess(c: Context, next: Next) {
+export async function requireAccess(c: Context<{ Variables: AppVariables }>, next: Next) {
   const user = await getUserFromRequest(c)
   if (!user) {
     return c.json({ success: false, error: 'Unauthorized' }, 401)

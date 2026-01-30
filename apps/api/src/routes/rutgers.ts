@@ -9,8 +9,9 @@ import {
   formatMilitaryTime,
   formatMeetingDay
 } from '../lib/rutgers'
+import type { AppVariables } from '../types'
 
-export const rutgersRoutes = new Hono()
+export const rutgersRoutes = new Hono<{ Variables: AppVariables }>()
 
 const joinSchema = z.object({
   userId: z.string().uuid(),
@@ -181,7 +182,7 @@ rutgersRoutes.post('/join', requireAccess, async (c) => {
 
     const meetingDays = (course.meeting_day || '')
       .split('')
-      .map(d => dayMap[d])
+      .map((d: string) => dayMap[d])
       .filter(Boolean)
 
     const startTime = toTimeString(course.start_time)
