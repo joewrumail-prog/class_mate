@@ -22,6 +22,7 @@ export default function ProfilePage() {
     nickname: user?.nickname || '',
     wechat: user?.wechat || '',
     qq: user?.qq || '',
+    inviteCode: user?.invite_code || '',
   })
 
   // Sync auto_share_contact when user changes
@@ -67,14 +68,15 @@ export default function ProfilePage() {
     
     setLoading(true)
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({
-          nickname: formData.nickname,
-          wechat: formData.wechat || null,
-          qq: formData.qq || null,
-        })
-        .eq('id', user.id)
+        const { error } = await supabase
+          .from('users')
+          .update({
+            nickname: formData.nickname,
+            wechat: formData.wechat || null,
+            qq: formData.qq || null,
+            invite_code: formData.inviteCode || null,
+          })
+          .eq('id', user.id)
       
       if (error) throw error
       
@@ -200,6 +202,18 @@ export default function ProfilePage() {
                   onChange={(e) => setFormData({ ...formData, qq: e.target.value })}
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="inviteCode">Invite Code</Label>
+              <Input
+                id="inviteCode"
+                placeholder="Enter invite code if you have one"
+                value={formData.inviteCode}
+                onChange={(e) => setFormData({ ...formData, inviteCode: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Non-edu accounts need an invite code to access AI parsing and matching.
+              </p>
             </div>
             
             <Button type="submit" loading={loading}>

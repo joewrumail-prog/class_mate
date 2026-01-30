@@ -28,6 +28,7 @@ export default function CompleteProfilePage() {
     nickname: user?.nickname || '',
     wechat: '',
     qq: '',
+    inviteCode: '',
   })
 
   useEffect(() => {
@@ -41,12 +42,13 @@ export default function CompleteProfilePage() {
     if (!raw) return
 
     try {
-      const pending = JSON.parse(raw) as PendingProfile
-      setFormData((prev) => ({
-        nickname: prev.nickname || pending.nickname || user.nickname || '',
-        wechat: prev.wechat || pending.wechat || '',
-        qq: prev.qq || pending.qq || '',
-      }))
+        const pending = JSON.parse(raw) as PendingProfile
+        setFormData((prev) => ({
+          nickname: prev.nickname || pending.nickname || user.nickname || '',
+          wechat: prev.wechat || pending.wechat || '',
+          qq: prev.qq || pending.qq || '',
+          inviteCode: prev.inviteCode,
+        }))
     } catch {
       // Ignore malformed storage
     }
@@ -91,6 +93,7 @@ export default function CompleteProfilePage() {
             nickname: formData.nickname,
             wechat: formData.wechat || null,
             qq: formData.qq || null,
+            invite_code: formData.inviteCode || null,
             school: 'Rutgers University - New Brunswick',
             is_edu_email: isEdu,
             email_verified: user.email_verified,
@@ -161,6 +164,18 @@ export default function CompleteProfilePage() {
                 value={formData.qq}
                 onChange={(e) => setFormData({ ...formData, qq: e.target.value })}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="inviteCode">Invite Code (optional)</Label>
+              <Input
+                id="inviteCode"
+                placeholder="Enter invite code if you have one"
+                value={formData.inviteCode}
+                onChange={(e) => setFormData({ ...formData, inviteCode: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Non-edu accounts need an invite code to access AI parsing and matching.
+              </p>
             </div>
 
             <Button type="submit" className="w-full" loading={loading}>

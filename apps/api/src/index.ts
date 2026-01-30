@@ -8,6 +8,8 @@ import { roomRoutes } from './routes/room'
 import { userRoutes } from './routes/user'
 import { rutgersRoutes } from './routes/rutgers'
 import { contactRoutes } from './routes/contact'
+import { rateLimit } from './middleware/rateLimit'
+import { recordError, recordRequest, getMetricsSnapshot } from './lib/metrics'
 
 const app = new Hono()
 
@@ -23,6 +25,16 @@ app.use('*', cors({
   },
   credentials: true,
 }))
+app.use('*', rateLimit({ windowMs: 60_000, max: 120, keyPrefix: 'global' }))
+app.use('*', async (c, next) => {
+  recordRequest()
+  try {
+    await next()
+  } catch (error) {
+    recordError()
+    throw error
+  }
+})
 
 // Health check
 app.get('/', (c) => {
@@ -36,6 +48,7 @@ app.get('/', (c) => {
 app.get('/health', (c) => {
   return c.json({ status: 'healthy' })
 })
+app.get('/metrics', (c) => c.json({ success: true, metrics: getMetricsSnapshot() }))
 
 // Routes
 app.route('/api/schedule', scheduleRoutes)

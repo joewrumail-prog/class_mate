@@ -9,6 +9,7 @@ export interface User {
   avatar_url?: string
   wechat?: string
   qq?: string
+  invite_code?: string
   school?: string
   is_edu_email: boolean
   email_verified: boolean

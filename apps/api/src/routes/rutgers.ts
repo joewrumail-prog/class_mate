@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { supabase } from '../lib/supabase'
-import { requireAuth } from '../middleware/auth'
+import { requireAccess } from '../middleware/auth'
 import { 
   fetchRutgersCourses, 
   parseCoursesToSections, 
@@ -157,7 +157,7 @@ rutgersRoutes.get('/search', async (c) => {
 /**
  * Join course rooms from Rutgers course index
  */
-rutgersRoutes.post('/join', requireAuth, async (c) => {
+rutgersRoutes.post('/join', requireAccess, async (c) => {
   try {
     const body = await c.req.json()
     const { userId, index, year, term } = joinSchema.parse(body)
@@ -342,7 +342,7 @@ rutgersRoutes.post('/join', requireAuth, async (c) => {
 /**
  * 同步 Rutgers 课程数据到本地数据库
  */
-rutgersRoutes.post('/sync', requireAuth, async (c) => {
+rutgersRoutes.post('/sync', requireAccess, async (c) => {
   try {
     const body = await c.req.json().catch(() => ({}))
     const year = body.year || new Date().getFullYear()

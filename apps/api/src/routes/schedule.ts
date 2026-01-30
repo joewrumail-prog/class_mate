@@ -2,7 +2,10 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { supabase } from '../lib/supabase'
 import { parseScheduleImage } from '../lib/scheduleParser'
-import { requireAuth } from '../middleware/auth'
+import { requireAccess } from '../middleware/auth'
+import { rateLimit } from '../middleware/rateLimit'
+import { recordLlmCall } from '../lib/metrics'
+import { consumeQuota } from '../lib/quota'
 
 export const scheduleRoutes = new Hono()
 
@@ -12,13 +15,19 @@ const parseSchema = z.object({
   semester: z.string().optional().default('2025-spring'),
 })
 
-scheduleRoutes.post('/parse', requireAuth, async (c) => {
+scheduleRoutes.post('/parse', rateLimit({ windowMs: 60_000, max: 10, keyPrefix: 'llm' }), requireAccess, async (c) => {
   try {
     const body = await c.req.json()
     const { image, semester } = parseSchema.parse(body)
+
+    const authUser = c.get('user') as { id: string; email?: string }
+    const isEdu = (authUser?.email || '').toLowerCase().endsWith('.edu') || (authUser?.email || '').toLowerCase().endsWith('@rutgers.edu')
+    await consumeQuota(authUser.id, isEdu)
     
     // Parse image with AI
+    const start = Date.now()
     const courses = await parseScheduleImage(image)
+    recordLlmCall(Date.now() - start)
     
     if (courses.length === 0) {
       return c.json({ 
@@ -57,7 +66,7 @@ const confirmSchema = z.object({
   })),
 })
 
-scheduleRoutes.post('/confirm', requireAuth, async (c) => {
+scheduleRoutes.post('/confirm', requireAccess, async (c) => {
   try {
     const body = await c.req.json()
     const { userId, semester, school, courses } = confirmSchema.parse(body)

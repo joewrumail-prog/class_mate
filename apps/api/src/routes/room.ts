@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { supabase } from '../lib/supabase'
-import { getUserFromRequest, requireAuth } from '../middleware/auth'
+import { getUserFromRequest, requireAccess, requireAuth } from '../middleware/auth'
 
 export const roomRoutes = new Hono()
 
@@ -120,7 +120,7 @@ roomRoutes.get('/my/:userId', requireAuth, async (c) => {
 })
 
 // Join or create a room from Rutgers section index
-roomRoutes.post('/join', requireAuth, async (c) => {
+roomRoutes.post('/join', requireAccess, async (c) => {
   try {
     const body = await c.req.json()
     const { index, year, term } = joinByIndexSchema.parse(body)

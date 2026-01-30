@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { supabase } from '../lib/supabase'
-import { requireAuth } from '../middleware/auth'
+import { requireAccess } from '../middleware/auth'
 
 export const contactRoutes = new Hono()
 
@@ -15,7 +15,7 @@ const requestSchema = z.object({
   message: z.string().max(200).optional(),
 })
 
-contactRoutes.post('/request', requireAuth, async (c) => {
+contactRoutes.post('/request', requireAccess, async (c) => {
   try {
     const body = await c.req.json()
     const { requesterId, targetId, roomId, message } = requestSchema.parse(body)
@@ -126,7 +126,7 @@ const respondSchema = z.object({
   accept: z.boolean(),  // true = approve, false = reject
 })
 
-contactRoutes.post('/respond', requireAuth, async (c) => {
+contactRoutes.post('/respond', requireAccess, async (c) => {
   try {
     const body = await c.req.json()
     const { requestId, userId, accept } = respondSchema.parse(body)
@@ -214,7 +214,7 @@ contactRoutes.post('/respond', requireAuth, async (c) => {
 /**
  * 获取我的好友列表（互相可见联系方式的用户）
  */
-contactRoutes.get('/connections/:userId', requireAuth, async (c) => {
+contactRoutes.get('/connections/:userId', requireAccess, async (c) => {
   try {
     const userId = c.req.param('userId')
 
@@ -286,7 +286,7 @@ contactRoutes.get('/connections/:userId', requireAuth, async (c) => {
 /**
  * 获取待处理的请求（我收到的）
  */
-contactRoutes.get('/pending/:userId', requireAuth, async (c) => {
+contactRoutes.get('/pending/:userId', requireAccess, async (c) => {
   try {
     const userId = c.req.param('userId')
 
@@ -352,7 +352,7 @@ contactRoutes.get('/pending/:userId', requireAuth, async (c) => {
 /**
  * 检查与某用户的连接状态
  */
-contactRoutes.get('/status/:userId/:targetId', requireAuth, async (c) => {
+contactRoutes.get('/status/:userId/:targetId', requireAccess, async (c) => {
   try {
     const userId = c.req.param('userId')
     const targetId = c.req.param('targetId')
