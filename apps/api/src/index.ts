@@ -15,12 +15,17 @@ const app = new Hono()
 
 // Middleware
 app.use('*', logger())
+const allowedOrigins = (process.env.FRONTEND_ORIGINS || '')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean)
+
 app.use('*', cors({
   origin: (origin) => {
-    // Allow localhost on any port for development
-    if (!origin || origin.startsWith('http://localhost:')) {
-      return origin || 'http://localhost:3000'
-    }
+    if (!origin) return null
+    if (origin.startsWith('http://localhost:')) return origin
+    if (allowedOrigins.includes(origin)) return origin
+    if (origin.endsWith('.vercel.app')) return origin
     return null
   },
   credentials: true,
