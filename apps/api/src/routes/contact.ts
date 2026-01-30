@@ -91,7 +91,8 @@ contactRoutes.post('/request', requireAccess, async (c) => {
           .select('courses(name)')
           .eq('id', roomId)
           .single()
-        const courseName = Array.isArray(room?.courses) ? room?.courses?.[0]?.name : room?.courses?.name
+        const roomData = room as { courses?: { name?: string } | { name?: string }[] } | null
+        const courseName = Array.isArray(roomData?.courses) ? roomData?.courses?.[0]?.name : roomData?.courses?.name
         roomName = courseName || ''
     }
     
@@ -264,7 +265,7 @@ contactRoutes.get('/connections/:userId', requireAccess, async (c) => {
       : { data: [] }
     
     const roomMap = new Map(
-      rooms?.map(r => {
+      (rooms as Array<{ id: string; courses?: { name?: string } | { name?: string }[] }> | null)?.map(r => {
         const courseName = Array.isArray(r.courses) ? r.courses?.[0]?.name : r.courses?.name
         return [r.id, courseName]
       }) || []
@@ -339,7 +340,7 @@ contactRoutes.get('/pending/:userId', requireAccess, async (c) => {
       : { data: [] }
     
     const roomMap = new Map(
-      rooms?.map(r => {
+      (rooms as Array<{ id: string; courses?: { name?: string } | { name?: string }[] }> | null)?.map(r => {
         const courseName = Array.isArray(r.courses) ? r.courses?.[0]?.name : r.courses?.name
         return [r.id, courseName]
       }) || []
