@@ -43,6 +43,9 @@ scheduleRoutes.post('/parse', rateLimit({ windowMs: 60_000, max: 10, keyPrefix: 
     })
   } catch (error: any) {
     console.error('Parse error:', error)
+    if (error?.message === 'Quota exceeded') {
+      return c.json({ success: false, error: 'Daily upload quota reached. Try again tomorrow.' }, 429)
+    }
     return c.json({ 
       success: false, 
       error: error.message || 'Failed to parse schedule' 

@@ -156,7 +156,11 @@ export default function ImportSchedulePage() {
       toast.success(`Detected ${result.courses.length} courses`)
     } catch (error: any) {
       console.error('Parse error:', error)
-      toast.error(error.message || 'Parse failed, please try again')
+      if (error?.message?.includes('quota')) {
+        toast.error('Daily upload quota reached. Please try again tomorrow.')
+      } else {
+        toast.error(error.message || 'Parse failed, please try again')
+      }
       setStep('upload')
     }
   }
@@ -264,6 +268,14 @@ export default function ImportSchedulePage() {
 
           {step === 'upload' && (
             <div className="space-y-4">
+              {!user?.is_edu_email && (
+                <div className="rounded-lg border border-[#E2E8F0] bg-white px-4 py-3 text-sm text-[#6B7280]">
+                  <span className="font-medium text-[#1F2937]">Daily upload quota:</span>{' '}
+                  {typeof user?.match_quota_remaining === 'number'
+                    ? `${user.match_quota_remaining} remaining today.`
+                    : '3 uploads per day.'}
+                </div>
+              )}
               <div
                 {...getRootProps()}
                 className={`rounded-xl border-2 border-dashed p-8 text-center transition-all cursor-pointer ${
