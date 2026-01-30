@@ -1,7 +1,7 @@
 import type { Context, Next } from 'hono'
 import type { User } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
-import type { AppVariables } from '../types'
+import { supabase } from '../lib/supabase.js'
+import type { AppVariables } from '../types.js'
 
 export async function getUserFromRequest(c: Context<{ Variables: AppVariables }>): Promise<User | null> {
   const authHeader = c.req.header('Authorization') || ''

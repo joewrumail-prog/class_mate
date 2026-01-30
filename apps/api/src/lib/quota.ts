@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabase } from './supabase.js'
 
 const DAILY_QUOTA = parseInt(process.env.DAILY_MATCH_QUOTA || '3')
 

@@ -1,8 +1,8 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
-import { supabase } from '../lib/supabase'
-import { requireAuth } from '../middleware/auth'
-import type { AppVariables } from '../types'
+import { supabase } from '../lib/supabase.js'
+import { requireAuth } from '../middleware/auth.js'
+import type { AppVariables } from '../types.js'
 
 export const userRoutes = new Hono<{ Variables: AppVariables }>()
 

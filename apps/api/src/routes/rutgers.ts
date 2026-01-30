@@ -1,15 +1,15 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
-import { supabase } from '../lib/supabase'
-import { requireAccess } from '../middleware/auth'
+import { supabase } from '../lib/supabase.js'
+import { requireAccess } from '../middleware/auth.js'
 import { 
   fetchRutgersCourses, 
   parseCoursesToSections, 
   getCurrentSemesters,
   formatMilitaryTime,
   formatMeetingDay
-} from '../lib/rutgers'
-import type { AppVariables } from '../types'
+} from '../lib/rutgers.js'
+import type { AppVariables } from '../types.js'
 
 export const rutgersRoutes = new Hono<{ Variables: AppVariables }>()
 

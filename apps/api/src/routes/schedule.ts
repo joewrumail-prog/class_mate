@@ -1,12 +1,12 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
-import { supabase } from '../lib/supabase'
-import { parseScheduleImage } from '../lib/scheduleParser'
-import { requireAccess } from '../middleware/auth'
-import { rateLimit } from '../middleware/rateLimit'
-import { recordLlmCall } from '../lib/metrics'
-import { consumeQuota } from '../lib/quota'
-import type { AppVariables } from '../types'
+import { supabase } from '../lib/supabase.js'
+import { parseScheduleImage } from '../lib/scheduleParser.js'
+import { requireAccess } from '../middleware/auth.js'
+import { rateLimit } from '../middleware/rateLimit.js'
+import { recordLlmCall } from '../lib/metrics.js'
+import { consumeQuota } from '../lib/quota.js'
+import type { AppVariables } from '../types.js'
 
 export const scheduleRoutes = new Hono<{ Variables: AppVariables }>()
 
