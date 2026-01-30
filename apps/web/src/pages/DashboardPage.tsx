@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CourseSearchBox } from '@/components/CourseSearchBox'
-import { getCurrentSemester, formatSemesterId } from '@/lib/semester'
+import { getCurrentSemester } from '@/lib/semester'
 import { authFetch } from '@/lib/api'
 import { Upload, Users, Calendar, ArrowRight } from 'lucide-react'
 

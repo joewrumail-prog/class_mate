@@ -10,6 +10,8 @@ export interface User {
   wechat?: string
   qq?: string
   invite_code?: string
+  match_quota_remaining?: number
+  match_quota_reset_at?: string | null
   school?: string
   is_edu_email: boolean
   email_verified: boolean
@@ -31,7 +33,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
       loading: true,
       

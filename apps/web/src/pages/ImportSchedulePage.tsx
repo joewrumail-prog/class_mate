@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { useDropzone } from 'react-dropzone'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Upload, Image, Check, Edit2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { getCurrentSemester, getAvailableSemesters, type SemesterInfo } from '@/lib/semester'
+import { getCurrentSemester, getAvailableSemesters } from '@/lib/semester'
 import { authFetch } from '@/lib/api'
 import * as pdfjsLib from 'pdfjs-dist'
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url'
@@ -115,7 +115,7 @@ export default function ImportSchedulePage() {
       throw new Error('Canvas not supported')
     }
 
-    await page.render({ canvasContext: context, viewport }).promise
+    await page.render({ canvasContext: context, viewport, canvas }).promise
     return canvas.toDataURL('image/png')
   }
   
