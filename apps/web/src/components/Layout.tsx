@@ -3,11 +3,12 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { 
-  Calendar, 
-  LayoutDashboard, 
-  Upload, 
-  User, 
+import {
+  Calendar,
+  LayoutDashboard,
+  Upload,
+  User,
+  Users,
   LogOut,
   Bell,
   X,
@@ -16,8 +17,14 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { authFetch } from '@/lib/api'
+import { useSystemStore } from '@/stores/system'
+import { findSchool, inferSchoolId, applySchoolTheme } from '@/lib/schools'
+import Crest from '@/components/system/Crest'
+import XpPill from '@/components/system/XpPill'
+import Toasts from '@/components/system/Toasts'
+import LevelUpModal from '@/components/system/LevelUpModal'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const API_URL = '' // same-origin: dev proxy + Vercel rewrites
 
 interface Notification {
   id: string
@@ -47,13 +54,36 @@ export default function Layout({ children }: LayoutProps) {
   const [loading, setLoading] = useState(false)
   const [responding, setResponding] = useState<string | null>(null)
   
+  const systemOn = !!user?.settings?.system_ui
+  const schoolId = user?.settings?.school_id ?? inferSchoolId(user?.school)
+  const school = findSchool(schoolId)
+
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'My Courses' },
     { path: '/import', icon: Upload, label: 'Import' },
     { path: '/profile', icon: User, label: 'Profile' },
   ]
-  
+
+  // System shell nav (README §1): Dashboard / Rooms / Import
+  const systemNavItems = [
+    { path: '/dashboard', label: 'Dashboard' },
+    { path: '/rooms', label: 'Rooms' },
+    { path: '/import', label: 'Import' },
+  ]
+
+  const mobileNavItems = systemOn
+    ? [
+        { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { path: '/rooms', icon: Users, label: 'Rooms' },
+        { path: '/import', icon: Upload, label: 'Import' },
+        { path: '/profile', icon: User, label: 'Profile' },
+      ]
+    : navItems
+
   const isActive = (path: string) => location.pathname === path
+
+  const isSystemNavActive = (path: string) =>
+    path === '/rooms' ? location.pathname.startsWith('/rooms') : location.pathname === path
   
   const unreadCount = notifications.filter(n => !n.is_read).length
   
@@ -143,6 +173,18 @@ export default function Layout({ children }: LayoutProps) {
     const interval = setInterval(fetchNotifications, 30000)
     return () => clearInterval(interval)
   }, [user?.id])
+
+  // System UI: load XP summary once when the flag is on
+  useEffect(() => {
+    if (systemOn) {
+      useSystemStore.getState().fetchSummary()
+    }
+  }, [systemOn])
+
+  // School theming: apply with the flag on, clear with the flag off
+  useEffect(() => {
+    applySchoolTheme(systemOn ? schoolId : null)
+  }, [systemOn, schoolId])
   
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr)
@@ -162,30 +204,70 @@ export default function Layout({ children }: LayoutProps) {
   
   return (
     <div className="min-h-screen bg-background">
+      {/* System UI: 3px brand top bar (README §1) */}
+      {systemOn && <div className="h-[3px] bg-brand-800" />}
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
-          <Link to="/dashboard" className="flex items-center gap-2 font-bold text-lg">
-            <Calendar className="h-6 w-6 text-primary" />
-            <span>ClassMate</span>
-          </Link>
-          
-          <nav className="hidden md:flex items-center gap-6 ml-10">
-            {navItems.map(item => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary ${
-                  isActive(item.path) ? 'text-primary' : 'text-muted-foreground'
-                }`}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-          
+      <header
+        className={
+          systemOn
+            ? 'sticky top-0 z-50 w-full border-b border-[#E2E8F0] bg-white/[0.88] backdrop-blur-[8px]'
+            : 'sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'
+        }
+      >
+        <div className={systemOn ? 'flex h-14 items-center px-7' : 'container flex h-14 items-center'}>
+          {systemOn ? (
+            <Link to="/dashboard" className="flex items-center gap-2.5">
+              <Crest letter={school?.mono ?? 'C'} size={30} />
+              <span className="text-[17px] font-bold tracking-[-0.02em] text-[#1F2937]">ClassMate</span>
+              {school && (
+                <>
+                  <span className="h-[18px] w-px bg-[#E2E8F0]" />
+                  <span className="text-xs font-semibold text-[#6B7280]">{school.name}</span>
+                </>
+              )}
+            </Link>
+          ) : (
+            <Link to="/dashboard" className="flex items-center gap-2 font-bold text-lg">
+              <Calendar className="h-6 w-6 text-primary" />
+              <span>ClassMate</span>
+            </Link>
+          )}
+
+          {systemOn ? (
+            <nav className="hidden md:flex h-14 items-stretch gap-1 ml-6">
+              {systemNavItems.map(item => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center border-b-2 border-t-2 border-t-transparent px-3 text-sm font-semibold transition-colors ${
+                    isSystemNavActive(item.path)
+                      ? 'border-b-brand-800 text-brand-900'
+                      : 'border-b-transparent text-[#6B7280] hover:text-[#374151]'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          ) : (
+            <nav className="hidden md:flex items-center gap-6 ml-10">
+              {navItems.map(item => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary ${
+                    isActive(item.path) ? 'text-primary' : 'text-muted-foreground'
+                  }`}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          )}
+
           <div className="flex items-center gap-4 ml-auto">
+            {systemOn && <XpPill />}
             {/* Notification Button */}
             <div className="relative">
               <Button 
@@ -338,7 +420,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* Mobile nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background">
         <div className="flex justify-around py-2">
-          {navItems.map(item => (
+          {mobileNavItems.map(item => (
             <Link
               key={item.path}
               to={item.path}
@@ -357,6 +439,10 @@ export default function Layout({ children }: LayoutProps) {
       <main className="container py-6 pb-20 md:pb-6">
         {children}
       </main>
+
+      {/* System UI overlays */}
+      {systemOn && <Toasts />}
+      {systemOn && <LevelUpModal />}
     </div>
   )
 }

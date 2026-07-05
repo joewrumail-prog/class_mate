@@ -9,6 +9,29 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Calendar, Mail, Info, GraduationCap } from 'lucide-react'
 import { toast } from 'sonner'
+import { authFetch } from '@/lib/api'
+
+const REFERRAL_CODE_KEY = 'classmate-referral-code'
+
+/**
+ * Best-effort referral redemption (refer-3-friends loop). Called once a
+ * session exists after signup — errors are intentionally silent and never
+ * block registration.
+ */
+async function redeemPendingReferral() {
+  const code = sessionStorage.getItem(REFERRAL_CODE_KEY)
+  if (!code) return
+  try {
+    await authFetch('/api/referral/redeem', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    })
+    sessionStorage.removeItem(REFERRAL_CODE_KEY)
+  } catch {
+    // Network failure — keep the code so a later completion point can retry.
+  }
+}
 
 export default function RegisterPage() {
   const navigate = useNavigate()
@@ -84,6 +107,12 @@ export default function RegisterPage() {
     if (error) throw error
   }
 
+  // Capture ?ref= (invite link) so the code survives the multi-step signup flow.
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get('ref')
+    if (ref?.trim()) sessionStorage.setItem(REFERRAL_CODE_KEY, ref.trim())
+  }, [])
+
   useEffect(() => {
     const checkPendingProfile = async () => {
       const { data: { session } } = await supabase.auth.getSession()
@@ -106,6 +135,7 @@ export default function RegisterPage() {
           emailVerified: !!session.user.email_confirmed_at,
         })
         localStorage.removeItem(pendingProfileKey)
+        void redeemPendingReferral()
         await refreshUser()
         toast.success('Registration complete!')
         navigate('/dashboard')
@@ -183,7 +213,8 @@ export default function RegisterPage() {
         isEdu,
         emailVerified: !!session.user.email_confirmed_at,
       })
-      
+
+      void redeemPendingReferral()
       await refreshUser()
       toast.success('Registration complete!')
       navigate('/dashboard')

@@ -2,41 +2,27 @@ import { supabase } from './supabase.js'
 
 const DAILY_QUOTA = parseInt(process.env.DAILY_MATCH_QUOTA || '3')
 
-const nextResetAt = () => {
-  const now = new Date()
-  const reset = new Date(now)
-  reset.setUTCHours(24, 0, 0, 0)
-  return reset.toISOString()
-}
-
+/**
+ * Consume one unit of the user's daily OCR/import quota.
+ *
+ * Serverless-safe: the counter lives in Postgres (`user_quotas` table) and is
+ * incremented atomically by the `increment_quota` RPC, so it is consistent
+ * across function instances. Throws 'Quota exceeded' when the daily limit is
+ * reached. Edu-verified users are exempt.
+ */
 export async function consumeQuota(userId: string, isEdu: boolean) {
   if (isEdu) return
 
-  const { data: user, error } = await supabase
-    .from('users')
-    .select('match_quota_remaining, match_quota_reset_at')
-    .eq('id', userId)
-    .single()
+  const { data, error } = await supabase.rpc('increment_quota', {
+    p_user_id: userId,
+    p_cost: 1,
+    p_limit: DAILY_QUOTA,
+  })
 
   if (error) throw error
 
-  const now = new Date()
-  const resetAt = user?.match_quota_reset_at ? new Date(user.match_quota_reset_at) : null
-  let remaining = user?.match_quota_remaining ?? DAILY_QUOTA
-
-  if (!resetAt || resetAt <= now) {
-    remaining = DAILY_QUOTA
-  }
-
-  if (remaining <= 0) {
+  // RPC returns remaining quota after consumption, or -1 when over limit.
+  if (typeof data === 'number' && data < 0) {
     throw new Error('Quota exceeded')
   }
-
-  const nextRemaining = remaining - 1
-  const { error: updateError } = await supabase
-    .from('users')
-    .update({ match_quota_remaining: nextRemaining, match_quota_reset_at: nextResetAt() })
-    .eq('id', userId)
-
-  if (updateError) throw updateError
 }

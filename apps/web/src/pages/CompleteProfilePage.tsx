@@ -9,8 +9,30 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Calendar, GraduationCap } from 'lucide-react'
 import { toast } from 'sonner'
+import { authFetch } from '@/lib/api'
 
 const PENDING_PROFILE_KEY = 'classmate-pending-profile'
+const REFERRAL_CODE_KEY = 'classmate-referral-code'
+
+/**
+ * Best-effort referral redemption (refer-3-friends loop). Called once the
+ * profile is saved and a session exists — errors are intentionally silent
+ * and never block registration.
+ */
+async function redeemPendingReferral() {
+  const code = sessionStorage.getItem(REFERRAL_CODE_KEY)
+  if (!code) return
+  try {
+    await authFetch('/api/referral/redeem', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    })
+    sessionStorage.removeItem(REFERRAL_CODE_KEY)
+  } catch {
+    // Network failure — keep the code so a later completion point can retry.
+  }
+}
 
 interface PendingProfile {
   email?: string
@@ -105,6 +127,7 @@ export default function CompleteProfilePage() {
       if (error) throw error
 
       localStorage.removeItem(PENDING_PROFILE_KEY)
+      void redeemPendingReferral()
       await refreshUser()
       toast.success('Profile completed!')
       navigate('/dashboard')

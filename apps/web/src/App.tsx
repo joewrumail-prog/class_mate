@@ -9,6 +9,7 @@ import RegisterPage from '@/pages/RegisterPage'
 import ResetPasswordPage from '@/pages/ResetPasswordPage'
 import CompleteProfilePage from '@/pages/CompleteProfilePage'
 import DashboardPage from '@/pages/DashboardPage'
+import RoomsPage from '@/pages/RoomsPage'
 import ImportSchedulePage from '@/pages/ImportSchedulePage'
 import RoomDetailPage from '@/pages/RoomDetailPage'
 import ProfilePage from '@/pages/ProfilePage'
@@ -72,6 +73,15 @@ function App() {
           <RequireProfile>
             <Layout>
               <DashboardPage />
+            </Layout>
+          </RequireProfile>
+        </PrivateRoute>
+      } />
+      <Route path="/rooms" element={
+        <PrivateRoute>
+          <RequireProfile>
+            <Layout>
+              <RoomsPage />
             </Layout>
           </RequireProfile>
         </PrivateRoute>

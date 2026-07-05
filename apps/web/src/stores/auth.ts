@@ -18,6 +18,7 @@ export interface User {
   auto_share_contact?: boolean
   created_at: string
   profile_complete?: boolean
+  settings?: { system_ui?: boolean; school_id?: string | null }
 }
 
 let refreshing = false

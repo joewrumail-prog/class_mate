@@ -11,6 +11,17 @@ import { Switch } from '@/components/ui/switch'
 import { ConnectionsList } from '@/components/ConnectionsList'
 import { ContactRequestsList } from '@/components/ContactRequestsList'
 import { toast } from 'sonner'
+import { Copy } from 'lucide-react'
+import { authFetch } from '@/lib/api'
+import { SCHOOLS, applySchoolTheme } from '@/lib/schools'
+
+interface ReferralStatus {
+  code: string
+  required: number
+  qualifiedCount: number
+  unlocked: boolean
+  justUnlocked: boolean
+}
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuthStore()
@@ -25,10 +36,102 @@ export default function ProfilePage() {
     inviteCode: user?.invite_code || '',
   })
 
+  // System UI (beta) settings
+  const [systemUi, setSystemUi] = useState(!!user?.settings?.system_ui)
+  const [systemUiLoading, setSystemUiLoading] = useState(false)
+  const [schoolId, setSchoolId] = useState(user?.settings?.school_id ?? '')
+  const [schoolLoading, setSchoolLoading] = useState(false)
+
   // Sync auto_share_contact when user changes
   useEffect(() => {
     setAutoShareContact(user?.auto_share_contact ?? false)
   }, [user?.auto_share_contact])
+
+  // Sync system settings when user changes
+  useEffect(() => {
+    setSystemUi(!!user?.settings?.system_ui)
+    setSchoolId(user?.settings?.school_id ?? '')
+  }, [user?.settings?.system_ui, user?.settings?.school_id])
+
+  // Referral program status (also lazily mints my invite code server-side)
+  const [referral, setReferral] = useState<ReferralStatus | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const loadReferralStatus = async () => {
+      try {
+        const res = await authFetch('/api/referral/status')
+        const data = await res.json()
+        if (!cancelled && data.success) {
+          setReferral(data)
+          if (data.justUnlocked) {
+            toast.success('Seat Watch Unlimited unlocked for this semester!')
+          }
+        }
+      } catch {
+        // Non-blocking — the card degrades gracefully when status is unavailable.
+      }
+    }
+    loadReferralStatus()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleCopyInviteLink = async () => {
+    if (!referral?.code) return
+    try {
+      await navigator.clipboard.writeText(
+        `${window.location.origin}/register?ref=${referral.code}`
+      )
+      toast.success('Invite link copied')
+    } catch {
+      toast.error('Could not copy the link')
+    }
+  }
+
+  const postSystemSettings = async (patch: { system_ui?: boolean; school_id?: string | null }) => {
+    const res = await authFetch('/api/system/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    })
+    const data = await res.json()
+    if (!data.success) throw new Error(data.error || 'Failed to update settings')
+  }
+
+  const handleSystemUiToggle = async (checked: boolean) => {
+    setSystemUiLoading(true)
+    try {
+      await postSystemSettings({ system_ui: checked })
+      setSystemUi(checked)
+      applySchoolTheme(checked ? schoolId || null : null)
+      await useAuthStore.getState().refreshUser()
+      toast.success(checked ? 'System UI enabled' : 'System UI disabled')
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update setting')
+    } finally {
+      setSystemUiLoading(false)
+    }
+  }
+
+  const handleSchoolChange = async (value: string) => {
+    const previous = schoolId
+    const newId = value || null
+    setSchoolId(value)
+    setSchoolLoading(true)
+    try {
+      await postSystemSettings({ school_id: newId })
+      applySchoolTheme(newId)
+      await useAuthStore.getState().refreshUser()
+      toast.success(newId ? 'School theme updated' : 'School theme cleared')
+    } catch (error: any) {
+      setSchoolId(previous) // Revert
+      toast.error(error.message || 'Failed to update school')
+    } finally {
+      setSchoolLoading(false)
+    }
+  }
 
   const handleAutoShareToggle = async (checked: boolean) => {
     if (!user) return
@@ -163,6 +266,105 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
       
+      {/* System UI (beta) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>System UI (beta)</CardTitle>
+          <CardDescription>
+            Gamified dashboard — daily quests, XP, streaks and school theming
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="font-medium">Enable System UI</p>
+              <p className="text-sm text-muted-foreground">
+                Turns on the quest dashboard, XP pill and level-ups
+              </p>
+            </div>
+            <Switch
+              checked={systemUi}
+              onCheckedChange={handleSystemUiToggle}
+              disabled={systemUiLoading}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="school-theme">School theme</Label>
+            <select
+              id="school-theme"
+              className="h-10 w-full rounded-md border border-[#E2E8F0] bg-white px-3 text-sm text-[#1F2937] focus:outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600"
+              value={schoolId}
+              onChange={(e) => handleSchoolChange(e.target.value)}
+              disabled={schoolLoading}
+            >
+              <option value="">No school theme</option>
+              {SCHOOLS.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Re-skins the System UI accent color with your school's signature hue.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Refer friends */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Refer Friends</CardTitle>
+          <CardDescription>
+            Invite 3 friends who join and import a schedule to unlock Seat Watch
+            Unlimited for the semester
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Your invite code</p>
+              <p className="font-mono text-lg font-semibold tracking-widest">
+                {referral?.code || '········'}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCopyInviteLink}
+              disabled={!referral?.code}
+            >
+              <Copy className="mr-2 h-4 w-4" />
+              Copy link
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium">
+              {Math.min(referral?.qualifiedCount ?? 0, referral?.required ?? 3)}/
+              {referral?.required ?? 3} friends joined
+            </p>
+            <div className="flex gap-1.5">
+              {Array.from({ length: referral?.required ?? 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-2 flex-1 rounded-full ${
+                    i < (referral?.qualifiedCount ?? 0) ? 'bg-teal-600' : 'bg-muted'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+
+          {referral?.unlocked && (
+            <Badge className="bg-teal-600 hover:bg-teal-600 text-white">
+              Seat Watch Unlimited unlocked · this semester
+            </Badge>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Edit Profile */}
       <Card>
         <CardHeader>

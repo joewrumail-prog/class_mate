@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth'
+import { useSystemStore } from '@/stores/system'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CourseSearchBox } from '@/components/CourseSearchBox'
+import HeroBand from '@/components/system/HeroBand'
+import TodayView from '@/components/system/TodayView'
+import SystemView from '@/components/system/SystemView'
 import { getCurrentSemester } from '@/lib/semester'
 import { authFetch } from '@/lib/api'
 import { Upload, Users, Calendar, ArrowRight } from 'lucide-react'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const API_URL = '' // same-origin: dev proxy + Vercel rewrites
 
 interface Room {
   id: string
@@ -32,7 +36,20 @@ export default function DashboardPage() {
   const [rooms, setRooms] = useState<Room[]>([])
   const [loading, setLoading] = useState(true)
   const currentSemester = getCurrentSemester()
-  
+
+  // System UI feature flag — with it off, this page renders exactly as before.
+  const systemOn = !!user?.settings?.system_ui
+  const [searchParams, setSearchParams] = useSearchParams()
+  const view: 'today' | 'system' = searchParams.get('view') === 'system' ? 'system' : 'today'
+  const fetchSummary = useSystemStore((s) => s.fetchSummary)
+  const fetchQuests = useSystemStore((s) => s.fetchQuests)
+
+  useEffect(() => {
+    if (!systemOn) return
+    fetchSummary()
+    fetchQuests()
+  }, [systemOn, fetchSummary, fetchQuests])
+
   useEffect(() => {
     const fetchRooms = async () => {
       if (!user?.id) {
@@ -62,7 +79,78 @@ export default function DashboardPage() {
     (acc, r) => acc + Math.max(0, Number(r.memberCount ?? 0) - 1),
     0
   )
-  
+
+  const setView = (next: 'today' | 'system') => {
+    const params = new URLSearchParams(searchParams)
+    if (next === 'system') params.set('view', 'system')
+    else params.delete('view')
+    setSearchParams(params, { replace: true })
+  }
+
+  if (systemOn) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC]">
+        <div className="mx-auto max-w-[1240px] px-7 pt-6">
+          <HeroBand />
+        </div>
+
+        {/* Today ⟷ System segmented pager */}
+        <div className="flex justify-center px-7 pt-[18px]">
+          <div className="relative flex rounded-full border border-[#E2E8F0] bg-[#F1F5F9] p-1">
+            <span
+              className="cm-slide absolute left-1 top-1 h-8 w-28 rounded-full bg-white shadow-[0_1px_3px_rgba(15,23,42,0.12)]"
+              style={{
+                transform: view === 'today' ? 'translateX(0px)' : 'translateX(112px)',
+                transition: 'transform .35s cubic-bezier(.16,1,.3,1)',
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setView('today')}
+              aria-pressed={view === 'today'}
+              className={`relative h-8 w-28 rounded-full text-[13.5px] font-bold transition-colors ${
+                view === 'today' ? 'text-brand-900' : 'text-[#6B7280]'
+              }`}
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('system')}
+              aria-pressed={view === 'system'}
+              className={`relative h-8 w-28 rounded-full text-[13.5px] font-bold transition-colors ${
+                view === 'system' ? 'text-brand-900' : 'text-[#6B7280]'
+              }`}
+            >
+              System
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-hidden pb-10 pt-[18px]">
+          <div
+            className="cm-slide flex w-[200%]"
+            style={{
+              transform: view === 'today' ? 'translateX(0%)' : 'translateX(-50%)',
+              transition: 'transform .5s cubic-bezier(.16,1,.3,1)',
+            }}
+          >
+            <div className="w-1/2 flex-none">
+              <div className="mx-auto max-w-[1240px] px-7">
+                {!loading && <TodayView hasSchedule={hasRooms} />}
+              </div>
+            </div>
+            <div className="w-1/2 flex-none">
+              <div className="mx-auto max-w-[1240px] px-7">
+                {!loading && <SystemView hasSchedule={hasRooms} />}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-10">
       <div className="max-w-6xl mx-auto px-4 md:px-6 space-y-8">

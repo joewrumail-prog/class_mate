@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Users } from 'lucide-react'
 import { authFetch } from '@/lib/api'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const API_URL = '' // same-origin: dev proxy + Vercel rewrites
 
 interface Connection {
   connectionId: string

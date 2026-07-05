@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth'
+import { useSystemStore } from '@/stores/system'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -12,7 +13,7 @@ import { toast } from 'sonner'
 import { formatSemesterId } from '@/lib/semester'
 import { authFetch } from '@/lib/api'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const API_URL = '' // same-origin: dev proxy + Vercel rewrites
 
 interface Member {
   id: string
@@ -53,13 +54,27 @@ const dayNames = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 export default function RoomDetailPage() {
   const { roomId } = useParams()
   const { user } = useAuthStore()
-  
+  const { startSession } = useSystemStore()
+  const systemOn = !!user?.settings?.system_ui
+
   const [room, setRoom] = useState<RoomData | null>(null)
   const [members, setMembers] = useState<Member[]>([])
   const [otherSections, setOtherSections] = useState<OtherSection[]>([])
   const [loading, setLoading] = useState(true)
   const [showPrivacyDialog, setShowPrivacyDialog] = useState(false)
   const [requestingContact, setRequestingContact] = useState<string | null>(null)
+  const [startingSession, setStartingSession] = useState(false)
+
+  // System UI (flag-gated): party-up study session — toast + XP handled by the store
+  const handleStartSession = async () => {
+    if (!roomId) return
+    setStartingSession(true)
+    try {
+      await startSession(roomId)
+    } finally {
+      setStartingSession(false)
+    }
+  }
 
   const fetchRoomData = useCallback(async () => {
     if (!roomId) return
@@ -246,6 +261,26 @@ export default function RoomDetailPage() {
         </CardContent>
       </Card>
       
+      {/* Party-up banner (System UI, flag-gated) */}
+      {systemOn && (
+        <div className="flex flex-col gap-4 rounded-xl border border-[#CCFBF1] bg-[radial-gradient(circle_at_top_left,#F0FDFA_0%,#FFFFFF_55%)] px-5 py-4 sm:flex-row sm:items-center">
+          <div className="flex-1">
+            <p className="text-sm font-bold text-[#0F766E]">Party up — study together tonight</p>
+            <p className="mt-[3px] text-[12.5px] text-[#6B7280]">
+              Team up with classmates in this room — everyone in the session earns XP.
+            </p>
+          </div>
+          <Button
+            className="flex-none bg-[#0D9488] text-[13px] font-semibold text-white hover:bg-[#0F766E]"
+            disabled={startingSession}
+            onClick={handleStartSession}
+          >
+            <Users className="mr-2 h-4 w-4" />
+            Start Study Session · +25 XP
+          </Button>
+        </div>
+      )}
+
       {/* Members */}
       <Card>
         <CardHeader>

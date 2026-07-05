@@ -7,7 +7,7 @@ import { authFetch } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const API_URL = '' // same-origin: dev proxy + Vercel rewrites
 
 interface SearchResult {
   index: string

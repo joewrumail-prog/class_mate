@@ -54,3 +54,65 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+
+/* ============================================================
+   ClassMate brand token system (System UI).
+   Default ramp = ClassMate blue — identical to the previous
+   hard-coded palette, so nothing changes with the flag off.
+   With `data-school` on <html>, --brand-base is overridden and
+   the ramp re-derives via color-mix (tokens/themes.css).
+   ============================================================ */
+:root {
+  --brand-base: #1E40AF;
+  --brand-50: #EFF6FF;
+  --brand-100: #DBEAFE;
+  --brand-200: #BFDBFE;
+  --brand-600: #2563EB;
+  --brand-700: #1D4ED8;
+  --brand-800: #1E40AF;
+  --brand-900: #1E3A8A;
+  --brand-hover: #1B3A9E;
+  --shadow-card: 0 8px 20px -12px rgba(15, 23, 42, 0.35);
+}
+
+[data-school] {
+  --brand-50: color-mix(in srgb, var(--brand-base) 8%, white);
+  --brand-100: color-mix(in srgb, var(--brand-base) 16%, white);
+  --brand-200: color-mix(in srgb, var(--brand-base) 30%, white);
+  --brand-600: color-mix(in srgb, var(--brand-base) 88%, white);
+  --brand-700: color-mix(in srgb, var(--brand-base) 96%, black);
+  --brand-800: var(--brand-base);
+  --brand-900: color-mix(in srgb, var(--brand-base) 78%, black);
+  --brand-hover: color-mix(in srgb, var(--brand-base) 86%, black);
+}
+
+[data-school='rutgers']   { --brand-base: #CC0033; }
+[data-school='princeton'] { --brand-base: #E77500; }
+[data-school='pennstate'] { --brand-base: #1E407C; }
+[data-school='michigan']  { --brand-base: #00274C; }
+[data-school='nyu']       { --brand-base: #57068C; }
+[data-school='osu']       { --brand-base: #BB0000; }
+[data-school='unnc']      { --brand-base: #003C71; }
+
+@keyframes cmToastIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes cmPopIn {
+  0%   { transform: scale(0.72); opacity: 0; }
+  62%  { transform: scale(1.035); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes cmFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cmSpin { to { transform: rotate(360deg); } }
+@keyframes cmPulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+
+.cm-pop   { animation: cmPopIn 0.45s cubic-bezier(0.16, 1, 0.3, 1); }
+.cm-fade  { animation: cmFadeIn 0.25s ease; }
+.cm-toast { animation: cmToastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.cm-pulse { animation: cmPulse 1.6s ease infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cm-pop, .cm-fade, .cm-toast, .cm-pulse { animation: none; }
+  .cm-slide { transition: none !important; }
+}

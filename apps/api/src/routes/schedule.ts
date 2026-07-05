@@ -1,58 +1,10 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { supabase } from '../lib/supabase.js'
-import { parseScheduleImage } from '../lib/scheduleParser.js'
 import { requireAccess } from '../middleware/auth.js'
-import { rateLimit } from '../middleware/rateLimit.js'
-import { recordLlmCall } from '../lib/metrics.js'
-import { consumeQuota } from '../lib/quota.js'
 import type { AppVariables } from '../types.js'
 
 export const scheduleRoutes = new Hono<{ Variables: AppVariables }>()
-
-// Parse schedule image
-const parseSchema = z.object({
-  image: z.string(), // base64 image
-  semester: z.string().optional().default('2025-spring'),
-})
-
-scheduleRoutes.post('/parse', rateLimit({ windowMs: 60_000, max: 10, keyPrefix: 'llm' }), requireAccess, async (c) => {
-  try {
-    const body = await c.req.json()
-    const { image, semester } = parseSchema.parse(body)
-
-    const authUser = c.get('user') as { id: string; email?: string }
-    const isEdu = (authUser?.email || '').toLowerCase().endsWith('.edu') || (authUser?.email || '').toLowerCase().endsWith('@rutgers.edu')
-    await consumeQuota(authUser.id, isEdu)
-    
-    // Parse image with AI
-    const start = Date.now()
-    const courses = await parseScheduleImage(image)
-    recordLlmCall(Date.now() - start)
-    
-    if (courses.length === 0) {
-      return c.json({ 
-        success: false, 
-        error: 'No courses found in the image' 
-      }, 400)
-    }
-    
-    return c.json({ 
-      success: true, 
-      courses,
-      semester,
-    })
-  } catch (error: any) {
-    console.error('Parse error:', error)
-    if (error?.message === 'Quota exceeded') {
-      return c.json({ success: false, error: 'Daily upload quota reached. Try again tomorrow.' }, 429)
-    }
-    return c.json({ 
-      success: false, 
-      error: error.message || 'Failed to parse schedule' 
-    }, 500)
-  }
-})
 
 // Confirm and save courses
 const confirmSchema = z.object({

@@ -1,0 +1,9 @@
+{
+  "functions": {
+    "api/index.ts": { "maxDuration": 60 }
+  },
+  "crons": [
+    { "path": "/api/cron/daily-quests", "schedule": "0 10 * * *" },
+    { "path": "/api/seatwatch/cron/poll", "schedule": "*/2 * * * *" }
+  ]
+}

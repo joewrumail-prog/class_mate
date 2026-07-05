@@ -10,6 +10,7 @@ import { Upload, Image, Check, Edit2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getCurrentSemester, getAvailableSemesters } from '@/lib/semester'
 import { authFetch } from '@/lib/api'
+import { useSystemStore } from '@/stores/system'
 import * as pdfjsLib from 'pdfjs-dist'
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url'
 
@@ -23,7 +24,7 @@ interface ParsedCourse {
   weeks: string
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const API_URL = '' // same-origin: dev proxy + Vercel rewrites
 const dayNames = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 export default function ImportSchedulePage() {
@@ -41,6 +42,17 @@ export default function ImportSchedulePage() {
   // Auto-detect current semester
   const availableSemesters = getAvailableSemesters()
   const [semester, setSemester] = useState(getCurrentSemester().id)
+
+  const systemOn = !!user?.settings?.system_ui
+
+  // Step indicator chips — System UI restyles the active chip with brand
+  // tokens (README §7); with the flag off the classes are unchanged.
+  const stepChipClass = (active: boolean) =>
+    active
+      ? systemOn
+        ? 'border-brand-600 bg-brand-50 text-brand-900'
+        : 'border-[#1E40AF] bg-[#EFF6FF] text-[#1E40AF]'
+      : 'border-[#E2E8F0] bg-white text-[#6B7280]'
   
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0]
@@ -210,6 +222,10 @@ export default function ImportSchedulePage() {
       }
       
       toast.success(result.message || 'Schedule imported successfully!')
+      if (systemOn) {
+        const roomCount = Array.isArray(result.rooms) ? result.rooms.length : parsedCourses.length
+        useSystemStore.getState().pushToast(`Schedule imported · ${roomCount} rooms joined`)
+      }
       navigate('/dashboard')
     } catch (error: any) {
       console.error('Confirm error:', error)
@@ -227,15 +243,15 @@ export default function ImportSchedulePage() {
         <h1 className="text-2xl font-semibold text-[#1F2937]">Import Schedule</h1>
         <p className="text-sm text-[#6B7280]">Upload a schedule screenshot or PDF for AI to extract course info.</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-medium">
-          <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${step === 'upload' ? 'border-[#1E40AF] bg-[#EFF6FF] text-[#1E40AF]' : 'border-[#E2E8F0] bg-white text-[#6B7280]'}`}>
+          <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${stepChipClass(step === 'upload')}`}>
             <span className="h-6 w-6 rounded-full flex items-center justify-center border border-current bg-white">1</span>
             Upload & Parse
           </div>
-          <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${step === 'confirm' ? 'border-[#1E40AF] bg-[#EFF6FF] text-[#1E40AF]' : 'border-[#E2E8F0] bg-white text-[#6B7280]'}`}>
+          <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${stepChipClass(step === 'confirm')}`}>
             <span className="h-6 w-6 rounded-full flex items-center justify-center border border-current bg-white">2</span>
             Verify Courses
           </div>
-          <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${step === 'confirm' && saving ? 'border-[#1E40AF] bg-[#EFF6FF] text-[#1E40AF]' : 'border-[#E2E8F0] bg-white text-[#6B7280]'}`}>
+          <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${stepChipClass(step === 'confirm' && saving)}`}>
             <span className="h-6 w-6 rounded-full flex items-center justify-center border border-current bg-white">3</span>
             Done
           </div>
