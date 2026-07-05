@@ -7,6 +7,6 @@
     { "path": "/api/seatwatch/cron/poll", "schedule": "0 11 * * *" }
   ],
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
