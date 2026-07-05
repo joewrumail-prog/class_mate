@@ -1,6 +1,12 @@
 {
+  "functions": {
+    "api/[[...route]].ts": { "maxDuration": 60 }
+  },
+  "crons": [
+    { "path": "/api/cron/daily-quests", "schedule": "0 10 * * *" },
+    { "path": "/api/seatwatch/cron/poll", "schedule": "0 11 * * *" }
+  ],
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://classmate-api.vercel.app/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
