@@ -10,8 +10,7 @@ export const openaiClient = new OpenAI({
   apiKey: apiKey || 'placeholder-key',
 })
 
-// Use GPT-4 Vision (gpt-4o is the latest multimodal model)
-export const VISION_MODEL = process.env.OPENAI_VISION_MODEL || 'gpt-4o'
+export const VISION_MODEL = process.env.OPENAI_VISION_MODEL || 'gpt-5.4-mini'
 
 export interface ParsedCourse {
   name: string

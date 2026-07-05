@@ -4,7 +4,7 @@ const openaiApiKey = process.env.OPENAI_API_KEY
 const doubaoApiKey = process.env.DOUBAO_API_KEY
 const doubaoEndpoint = process.env.DOUBAO_ENDPOINT_ID || 'doubao-seed-1-6-vision-250815'
 
-const openaiModel = process.env.OPENAI_VISION_MODEL || 'gpt-4o'
+const openaiModel = process.env.OPENAI_VISION_MODEL || 'gpt-5.4-mini'
 
 const SCHEDULE_PARSE_PROMPT = `You are a schedule parsing assistant. Please analyze this class schedule image and extract all course information.
 
