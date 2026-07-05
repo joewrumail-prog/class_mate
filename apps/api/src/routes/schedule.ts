@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { supabase } from '../lib/supabase.js'
-import { requireAccess } from '../middleware/auth.js'
+import { requireAccess, requireAuth } from '../middleware/auth.js'
 import type { AppVariables } from '../types.js'
 
 export const scheduleRoutes = new Hono<{ Variables: AppVariables }>()
@@ -180,9 +180,153 @@ scheduleRoutes.post('/confirm', requireAccess, async (c) => {
     })
   } catch (error: any) {
     console.error('Confirm error:', error)
-    return c.json({ 
-      success: false, 
-      error: error.message || 'Failed to save schedule' 
+    return c.json({
+      success: false,
+      error: error.message || 'Failed to save schedule'
+    }, 500)
+  }
+})
+
+// Schedule overlap summary: who else is in my course rooms?
+//
+// PRIVACY (hard rule, from the product spec): classmate objects carry
+// avatar + FIRST NAME (first whitespace-token of nickname) + counts +
+// shared room list ONLY. No schedules, no contact info, no emails —
+// connecting stays mutual opt-in via the existing contact-request flow.
+scheduleRoutes.get('/overlap', requireAuth, async (c) => {
+  try {
+    const authUser = c.get('user') as { id: string }
+    const userId = authUser.id
+
+    // 1. My room memberships (imported courses), joined to course + code.
+    //    Ordered by joined_at ascending so [0] is my first course.
+    const { data: memberships, error: membershipsError } = await supabase
+      .from('room_members')
+      .select(`
+        room_id,
+        joined_at,
+        course_rooms (
+          id,
+          courses (
+            name,
+            code
+          )
+        )
+      `)
+      .eq('user_id', userId)
+      .order('joined_at', { ascending: true })
+
+    if (membershipsError) throw membershipsError
+
+    // Room id -> { courseName, courseCode } for my rooms.
+    const myRooms = (memberships || []).map(m => {
+      const courseRoom = Array.isArray(m.course_rooms) ? m.course_rooms[0] : m.course_rooms
+      const course = Array.isArray(courseRoom?.courses) ? courseRoom?.courses?.[0] : courseRoom?.courses
+      return {
+        roomId: m.room_id as string,
+        courseName: (course?.name as string) || '',
+        courseCode: (course?.code as string | null) ?? null,
+      }
+    }).filter(r => r.roomId)
+
+    const roomInfoById = new Map(myRooms.map(r => [r.roomId, r]))
+    const roomIds = myRooms.map(r => r.roomId)
+
+    const totalCourses = myRooms.length
+    const firstCourseCode = myRooms.length > 0
+      ? (myRooms[0].courseCode || myRooms[0].courseName || null)
+      : null
+
+    // 2. Other members of those rooms (nickname + avatar only).
+    let otherMembers: { room_id: string; user_id: string; users: any }[] = []
+    if (roomIds.length > 0) {
+      const { data: others, error: othersError } = await supabase
+        .from('room_members')
+        .select(`
+          room_id,
+          user_id,
+          users (
+            nickname,
+            avatar_url
+          )
+        `)
+        .in('room_id', roomIds)
+        .neq('user_id', userId)
+
+      if (othersError) throw othersError
+      otherMembers = (others || []) as typeof otherMembers
+    }
+
+    // 3. Aggregate per classmate: shared course count + shared room list.
+    const roomsWithOthers = new Set<string>()
+    const classmateById = new Map<string, {
+      userId: string
+      firstName: string
+      avatarUrl: string | null
+      sharedCourses: number
+      rooms: { roomId: string; courseName: string; courseCode: string | null }[]
+    }>()
+
+    for (const member of otherMembers) {
+      const room = roomInfoById.get(member.room_id)
+      if (!room) continue
+
+      roomsWithOthers.add(member.room_id)
+
+      let classmate = classmateById.get(member.user_id)
+      if (!classmate) {
+        const profile = Array.isArray(member.users) ? member.users[0] : member.users
+        const nickname = (profile?.nickname as string) || ''
+        // First name only — never expose the full nickname/handle here.
+        const firstName = nickname.trim().split(/\s+/)[0] || 'Classmate'
+        classmate = {
+          userId: member.user_id,
+          firstName,
+          avatarUrl: (profile?.avatar_url as string | null) ?? null,
+          sharedCourses: 0,
+          rooms: [],
+        }
+        classmateById.set(member.user_id, classmate)
+      }
+
+      if (!classmate.rooms.some(r => r.roomId === room.roomId)) {
+        classmate.sharedCourses++
+        classmate.rooms.push({
+          roomId: room.roomId,
+          courseName: room.courseName,
+          courseCode: room.courseCode,
+        })
+      }
+    }
+
+    const classmates = Array.from(classmateById.values())
+      .sort((a, b) => b.sharedCourses - a.sharedCourses)
+      .slice(0, 20)
+
+    // 4. My invite code — read-only, never minted here (see referral routes).
+    const { data: profileRow, error: profileError } = await supabase
+      .from('users')
+      .select('invite_code')
+      .eq('id', userId)
+      .single()
+
+    if (profileError && profileError.code !== 'PGRST116') {
+      throw profileError
+    }
+
+    return c.json({
+      success: true,
+      totalCourses,
+      overlappingCourses: roomsWithOthers.size,
+      classmates,
+      firstCourseCode,
+      inviteCode: (profileRow?.invite_code as string | null) ?? null,
+    })
+  } catch (error: any) {
+    console.error('Overlap error:', error)
+    return c.json({
+      success: false,
+      error: error.message || 'Failed to compute schedule overlap',
     }, 500)
   }
 })

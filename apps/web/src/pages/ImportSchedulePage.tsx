@@ -10,6 +10,7 @@ import { Upload, Image, Check, Edit2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getCurrentSemester, getAvailableSemesters } from '@/lib/semester'
 import { authFetch } from '@/lib/api'
+import OverlapReveal from '@/components/OverlapReveal'
 import { useSystemStore } from '@/stores/system'
 import * as pdfjsLib from 'pdfjs-dist'
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min?url'
@@ -38,6 +39,7 @@ export default function ImportSchedulePage() {
   const [parsedCourses, setParsedCourses] = useState<ParsedCourse[]>([])
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
+  const [showReveal, setShowReveal] = useState(false)
   
   // Auto-detect current semester
   const availableSemesters = getAvailableSemesters()
@@ -226,7 +228,9 @@ export default function ImportSchedulePage() {
         const roomCount = Array.isArray(result.rooms) ? result.rooms.length : parsedCourses.length
         useSystemStore.getState().pushToast(`Schedule imported · ${roomCount} rooms joined`)
       }
-      navigate('/dashboard')
+      // Overlap reveal (conversion moment) replaces the immediate dashboard
+      // navigation — the user sees classmates first; onClose navigates.
+      setShowReveal(true)
     } catch (error: any) {
       console.error('Confirm error:', error)
       toast.error(error.message || 'Save failed, please try again')
@@ -238,6 +242,7 @@ export default function ImportSchedulePage() {
   
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-10">
+      {showReveal && <OverlapReveal onClose={() => navigate('/dashboard')} />}
       <div className="max-w-5xl mx-auto px-4 md:px-6 space-y-8">
       <div className="space-y-3">
         <h1 className="text-2xl font-semibold text-[#1F2937]">Import Schedule</h1>
