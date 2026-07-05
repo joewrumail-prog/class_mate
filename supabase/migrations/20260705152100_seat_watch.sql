@@ -85,10 +85,12 @@ alter table webreg_health enable row level security;
 alter table seat_watch_outages enable row level security;
 
 -- Owner-only reads; all writes go through the API service role (bypasses RLS).
+drop policy if exists seat_watches_owner_select on seat_watches;
 create policy seat_watches_owner_select on seat_watches
   for select to authenticated
   using (auth.uid() = user_id);
 
+drop policy if exists seat_watch_events_owner_select on seat_watch_events;
 create policy seat_watch_events_owner_select on seat_watch_events
   for select to authenticated
   using (
@@ -100,10 +102,12 @@ create policy seat_watch_events_owner_select on seat_watch_events
   );
 
 -- Health and outage windows are app-wide, non-sensitive status data.
+drop policy if exists webreg_health_authenticated_select on webreg_health;
 create policy webreg_health_authenticated_select on webreg_health
   for select to authenticated
   using (true);
 
+drop policy if exists seat_watch_outages_authenticated_select on seat_watch_outages;
 create policy seat_watch_outages_authenticated_select on seat_watch_outages
   for select to authenticated
   using (true);
