@@ -161,12 +161,12 @@ describe('energyBudgetMinutes', () => {
     )
   })
 
-  test('self-report multipliers [0.4, 0.7, 1.0, 1.15, 1.25]', () => {
+  test('self-report multipliers [0.4, 0.7, 1.0, 1.1, 1.2] (DEV-SPEC §3)', () => {
     assert.equal(energyBudgetMinutes({ ...base, selfReport: 1 }), 60) // 150 * 0.4
     assert.equal(energyBudgetMinutes({ ...base, selfReport: 2 }), 105) // 150 * 0.7
     assert.equal(energyBudgetMinutes({ ...base, selfReport: 3 }), 150) // 150 * 1.0
-    assert.equal(energyBudgetMinutes({ ...base, selfReport: 4 }), 173) // round(172.5)
-    assert.equal(energyBudgetMinutes({ ...base, selfReport: 5 }), 188) // round(187.5)
+    assert.equal(energyBudgetMinutes({ ...base, selfReport: 4 }), 165) // 150 * 1.1
+    assert.equal(energyBudgetMinutes({ ...base, selfReport: 5 }), 180) // 150 * 1.2
   })
 
   test('null self-report multiplies by 1.0', () => {
@@ -177,10 +177,10 @@ describe('energyBudgetMinutes', () => {
   })
 
   test('floor applies before the multiplier', () => {
-    // floored 30 * 1.25 = 37.5 -> 38 (not max(30, ...) after multiplying)
+    // floored 30 * 1.2 = 36 (not max(30, ...) after multiplying)
     assert.equal(
       energyBudgetMinutes({ ...base, classMinutesToday: 400, selfReport: 5 }),
-      38
+      36
     )
     // floored 30 * 0.4 = 12: a truly bad day can go below 30 minutes.
     assert.equal(

@@ -14,6 +14,8 @@ import { seatwatchRoutes } from './routes/seatwatch.js'
 import { referralRoutes } from './routes/referral.js'
 import { schedulerRoutes } from './routes/scheduler.js'
 import { canvasRoutes } from './routes/canvas.js'
+import { authRoutes } from './routes/auth.js'
+import { dailyCronRoutes } from './routes/dailyCron.js'
 import { rateLimit } from './middleware/rateLimit.js'
 import { supabase } from './lib/supabase.js'
 
@@ -83,6 +85,8 @@ app.route('/api/seatwatch', seatwatchRoutes)
 app.route('/api/referral', referralRoutes)
 app.route('/api/scheduler', schedulerRoutes)
 app.route('/api/canvas', canvasRoutes)
+app.route('/api/auth', authRoutes)
+app.route('/api/cron/daily', dailyCronRoutes)
 
 // Error handling
 app.onError((err, c) => {

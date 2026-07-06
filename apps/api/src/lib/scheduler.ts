@@ -77,8 +77,11 @@ const DEFAULT_FILL_CAP = 0.8
 /** §3.3 — protection mode keeps only deadlines within this horizon. */
 const PROTECTION_HORIZON_MS = 48 * 3_600_000
 
-/** §3.3 — self-report (1..5) multiplies the day's budget. null = no report. */
-const SELF_REPORT_MULTIPLIER = [0.4, 0.7, 1.0, 1.15, 1.25] as const
+/**
+ * §3.3 — self-report (1..5) multiplies the day's budget. null = no report.
+ * Values are the DEV-SPEC §3 canonical set (aligned 2026-07-07; was 1.15/1.25).
+ */
+const SELF_REPORT_MULTIPLIER = [0.4, 0.7, 1.0, 1.1, 1.2] as const
 
 /** Documented defaults for users.settings sleep_start / sleep_end. */
 const DEFAULT_SLEEP_START = '00:30'
