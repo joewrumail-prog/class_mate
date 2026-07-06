@@ -10,6 +10,7 @@ import {
   parseSemesterId,
   pollWatches,
 } from '../lib/webreg.js'
+import { webregDeepLink } from '../lib/alerts.js'
 import type { AppVariables } from '../types.js'
 
 export const seatwatchRoutes = new Hono<{ Variables: AppVariables }>()
@@ -74,7 +75,11 @@ seatwatchRoutes.get('/', requireAuth, async (c) => {
       .order('created_at', { ascending: false })
     if (error) throw error
 
-    const watches = (data as any[]) || []
+    const watches = ((data as any[]) || []).map((w) => ({
+      ...w,
+      // One-click WebReg deep link with the index pre-filled (sniper model).
+      registerUrl: webregDeepLink(w.semester, w.section_index),
+    }))
     const unlimited = await hasUnlimited(user.id, semester)
 
     return c.json({

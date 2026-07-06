@@ -6,11 +6,12 @@
 // Rutgers API 基础 URL
 const RUTGERS_API_BASE = 'https://classes.rutgers.edu/soc/api'
 
-// 学期编码
+// 学期编码 — 2026-07 对照线上 SOC API 实测修正:fall=9、summer=7
+// (此前两者写反,秋季轮询/搜索会查到夏季学期)
 export const TERM_CODES = {
   SPRING: 1,
-  SUMMER: 9,
-  FALL: 7,
+  SUMMER: 7,
+  FALL: 9,
   WINTER: 0,
 } as const
 

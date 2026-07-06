@@ -3,6 +3,7 @@ import { ArrowRight, Flame, Upload, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSystemStore } from '@/stores/system'
 import QuestList from '@/components/system/QuestList'
+import SeatWatchCard from '@/components/SeatWatchCard'
 
 const WEEKLY_GOAL = 300
 
@@ -62,7 +63,8 @@ export default function TodayView({ hasSchedule }: { hasSchedule: boolean }) {
         </div>
       </div>
 
-      {/* Sidebar card — real store stats only */}
+      {/* Sidebar — weekly stats + seat watch */}
+      <div className="space-y-[18px]">
       <div className="rounded-xl border border-[#E2E8F0] bg-white px-5 py-[18px] shadow-[0_1px_3px_rgba(15,23,42,0.08)]">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-[#1F2937]">This week</h3>
@@ -101,6 +103,9 @@ export default function TodayView({ hasSchedule }: { hasSchedule: boolean }) {
             Open Rooms →
           </Link>
         </div>
+      </div>
+
+      <SeatWatchCard />
       </div>
     </div>
   )

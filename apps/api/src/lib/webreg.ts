@@ -156,7 +156,10 @@ export function breakerAllowsRequest(
 // 1. PURE — semester ids (server-side mirror of apps/web/src/lib/semester.ts)
 // =========================================================================
 
-const TERM_BY_NAME: Record<string, number> = { spring: 1, fall: 7, summer: 9, winter: 0 }
+// Rutgers SOC term codes — verified against the live API (2026-07): fall=9,
+// summer=7, spring=1, winter=0. (The legacy lib/rutgers.ts had fall/summer
+// swapped since day one; fixed in both places together.)
+const TERM_BY_NAME: Record<string, number> = { spring: 1, fall: 9, summer: 7, winter: 0 }
 
 /** "2026-fall" -> { year: 2026, term: 7 } (Rutgers term codes), or null. */
 export function parseSemesterId(semester: string): { year: number; term: number } | null {
@@ -522,13 +525,29 @@ export async function pollWatches(batchSize = 30): Promise<PollSummary> {
           .insert({ watch_id: watch.id, kind: newStatus })
 
         if (watch.status === 'closed' && newStatus === 'open') {
-          // The product's #1 moment. Push delivery wiring lands with P1 #7;
-          // until then notified_open_at + the alert_sent event are the ledger.
+          // The product's #1 moment: email the owner a WebReg deep link with
+          // the index pre-filled (Course Sniper model). notified_open_at is
+          // stamped only when delivery was accepted, so a RESEND_API_KEY-less
+          // deploy keeps working and undelivered alerts remain visible in the
+          // ledger as a plain 'open' event. Alert failures never break polls.
           summary.alerts += 1
-          patch.notified_open_at = nowIso
-          await db
-            .from('seat_watch_events')
-            .insert({ watch_id: watch.id, kind: 'alert_sent' })
+          const { sendSeatOpenAlert } = await import('./alerts.js')
+          const { data: owner } = await db
+            .from('users')
+            .select('email')
+            .eq('id', watch.user_id)
+            .maybeSingle()
+          const sent = await sendSeatOpenAlert(owner?.email || '', {
+            sectionIndex: watch.section_index,
+            courseCode: watch.course_code,
+            semester: watch.semester,
+          })
+          if (sent) {
+            patch.notified_open_at = nowIso
+            await db
+              .from('seat_watch_events')
+              .insert({ watch_id: watch.id, kind: 'alert_sent' })
+          }
         }
       }
 

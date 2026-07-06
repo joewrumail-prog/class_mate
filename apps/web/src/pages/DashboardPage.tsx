@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CourseSearchBox } from '@/components/CourseSearchBox'
+import SeatWatchCard from '@/components/SeatWatchCard'
 import HeroBand from '@/components/system/HeroBand'
 import TodayView from '@/components/system/TodayView'
 import SystemView from '@/components/system/SystemView'
@@ -217,6 +218,9 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+      {/* Seat Watch — basic core loop (Course Sniper model) */}
+        <SeatWatchCard />
       
       {/* Rooms */}
         {loading ? (
